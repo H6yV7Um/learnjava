@@ -1,0 +1,23 @@
+1package com.io.output;
+2
+3import java.io.*;
+4
+5/**
+6 * Created by dongchunxu on 2017/6/18.
+7 */
+8public class BasicFileOutput {
+9    public static void main(String[] args) throws IOException {
+10        BufferedReader reader = new BufferedReader(new FileReader("./src/main/java/com/output/BasicFileOutput.java"));
+11
+12        PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter("BasicFileOutput.out")));
+13
+14        int lineNum = 1;
+15        String line;
+16        while ((line = reader.readLine()) != null) {
+17            writer.println((lineNum++) + line);
+18        }
+19
+20        writer.close();
+21
+22    }
+23}
