@@ -1,0 +1,4446 @@
+
+
+首页  ||  下载  ||  用户指南  ||  开发者指南  ||  管理员指南  ||  培训文档  ||  常见问题解答  ||  发布记录  ||  发展路线  ||  社区
+
+English | 中文
+
+用户指南
+入门
+背景
+需求
+架构
+用法
+快速启动
+服务提供者
+服务消费者
+依赖
+必需依赖
+缺省依赖
+可选依赖
+成熟度
+功能成熟度
+策略成熟度
+配置
+Xml配置
+属性配置
+注解配置
+API配置
+示例
+启动时检查
+集群容错
+负载均衡
+线程模型
+直连提供者
+只订阅
+只注册
+静态服务
+多协议
+多注册中心
+服务分组
+多版本
+分组聚合
+参数验证
+结果缓存
+泛化引用
+泛化实现
+回声测试
+上下文信息
+隐式传参
+异步调用
+本地调用
+参数回调
+事件通知
+本地存根
+本地伪装
+延迟暴露
+并发控制
+连接控制
+延迟连接
+粘滞连接
+令牌验证
+路由规则
+配置规则
+服务降级
+优雅停机
+主机绑定
+日志适配
+访问日志
+服务容器
+Reference Config缓存
+分布式事务
+API参考手册
+配置API
+注解API
+模型API
+上下文API
+服务API
+配置参考手册
+<dubbo:service/>
+<dubbo:reference/>
+<dubbo:protocol/>
+<dubbo:registry/>
+<dubbo:monitor/>
+<dubbo:application/>
+<dubbo:module/>
+<dubbo:provider/>
+<dubbo:consumer/>
+<dubbo:method/>
+<dubbo:argument/>
+<dubbo:parameter/>
+协议参考手册
+dubbo://
+rmi://
+hessian://
+http://
+webservice://
+thrift://
+memcached://
+redis://
+注册中心参考手册
+Multicast注册中心
+Zookeeper注册中心
+Redis注册中心
+Simple注册中心
+Simple监控中心
+Telnet命令参考手册
+ls
+ps
+cd
+pwd
+trace
+count
+invoke
+status
+log
+help
+clear
+exit
+Maven插件参考手册
+mvn dubbo:registry
+mvn dubbo:create
+服务化最佳实践
+分包
+粒度
+版本
+兼容性
+枚举值
+序列化
+异常
+调用
+推荐用法
+容量规划
+基准测试工具包
+性能测试报告
+测试说明
+测试环境
+测试目的
+测试脚本
+测试结果
+测试分析
+测试覆盖率报告
+入门
+(+) (#)
+
+背景
+(#)
+
+随着互联网的发展，网站应用的规模不断扩大，常规的垂直应用架构已无法应对，分布式服务架构以及流动计算架构势在必行，亟需一个治理系统确保架构有条不紊的演进。
+
+
+
+单一应用架构
+当网站流量很小时，只需一个应用，将所有功能都部署在一起，以减少部署节点和成本。
+此时，用于简化增删改查工作量的 数据访问框架(ORM) 是关键。
+垂直应用架构
+当访问量逐渐增大，单一应用增加机器带来的加速度越来越小，将应用拆成互不相干的几个应用，以提升效率。
+此时，用于加速前端页面开发的 Web框架(MVC) 是关键。
+分布式服务架构
+当垂直应用越来越多，应用之间交互不可避免，将核心业务抽取出来，作为独立的服务，逐渐形成稳定的服务中心，使前端应用能更快速的响应多变的市场需求。
+此时，用于提高业务复用及整合的 分布式服务框架(RPC) 是关键。
+流动计算架构
+当服务越来越多，容量的评估，小服务资源的浪费等问题逐渐显现，此时需增加一个调度中心基于访问压力实时管理集群容量，提高集群利用率。
+此时，用于提高机器利用率的 资源调度和治理中心(SOA) 是关键。
+需求
+(#)
+
+
+
+在大规模服务化之前，应用可能只是通过RMI或Hessian等工具，简单的暴露和引用远程服务，通过配置服务的URL地址进行调用，通过F5等硬件进行负载均衡。
+
+(1) 当服务越来越多时，服务URL配置管理变得非常困难，F5硬件负载均衡器的单点压力也越来越大。
+
+此时需要一个服务注册中心，动态的注册和发现服务，使服务的位置透明。
+
+并通过在消费方获取服务提供方地址列表，实现软负载均衡和Failover，降低对F5硬件负载均衡器的依赖，也能减少部分成本。
+
+(2) 当进一步发展，服务间依赖关系变得错踪复杂，甚至分不清哪个应用要在哪个应用之前启动，架构师都不能完整的描述应用的架构关系。
+
+这时，需要自动画出应用间的依赖关系图，以帮助架构师理清理关系。
+
+(3) 接着，服务的调用量越来越大，服务的容量问题就暴露出来，这个服务需要多少机器支撑？什么时候该加机器？
+
+为了解决这些问题，第一步，要将服务现在每天的调用量，响应时间，都统计出来，作为容量规划的参考指标。
+
+其次，要可以动态调整权重，在线上，将某台机器的权重一直加大，并在加大的过程中记录响应时间的变化，直到响应时间到达阀值，记录此时的访问量，再以此访问量乘以机器数反推总容量。
+
+以上是Dubbo最基本的几个需求，更多服务治理问题参见：
+
+http://code.alibabatech.com/blog/experience_1402/service-governance-process.html
+
+架构
+(#)
+
+
+
+节点角色说明：
+
+Provider: 暴露服务的服务提供方。
+Consumer: 调用远程服务的服务消费方。
+Registry: 服务注册与发现的注册中心。
+Monitor: 统计服务的调用次调和调用时间的监控中心。
+Container: 服务运行容器。
+调用关系说明：
+
+0. 服务容器负责启动，加载，运行服务提供者。
+1. 服务提供者在启动时，向注册中心注册自己提供的服务。
+2. 服务消费者在启动时，向注册中心订阅自己所需的服务。
+3. 注册中心返回服务提供者地址列表给消费者，如果有变更，注册中心将基于长连接推送变更数据给消费者。
+4. 服务消费者，从提供者地址列表中，基于软负载均衡算法，选一台提供者进行调用，如果调用失败，再选另一台调用。
+5. 服务消费者和提供者，在内存中累计调用次数和调用时间，定时每分钟发送一次统计数据到监控中心。
+(1) 连通性：
+
+注册中心负责服务地址的注册与查找，相当于目录服务，服务提供者和消费者只在启动时与注册中心交互，注册中心不转发请求，压力较小
+监控中心负责统计各服务调用次数，调用时间等，统计先在内存汇总后每分钟一次发送到监控中心服务器，并以报表展示
+服务提供者向注册中心注册其提供的服务，并汇报调用时间到监控中心，此时间不包含网络开销
+服务消费者向注册中心获取服务提供者地址列表，并根据负载算法直接调用提供者，同时汇报调用时间到监控中心，此时间包含网络开销
+注册中心，服务提供者，服务消费者三者之间均为长连接，监控中心除外
+注册中心通过长连接感知服务提供者的存在，服务提供者宕机，注册中心将立即推送事件通知消费者
+注册中心和监控中心全部宕机，不影响已运行的提供者和消费者，消费者在本地缓存了提供者列表
+注册中心和监控中心都是可选的，服务消费者可以直连服务提供者
+(2) 健状性：
+
+监控中心宕掉不影响使用，只是丢失部分采样数据
+数据库宕掉后，注册中心仍能通过缓存提供服务列表查询，但不能注册新服务
+注册中心对等集群，任意一台宕掉后，将自动切换到另一台
+注册中心全部宕掉后，服务提供者和服务消费者仍能通过本地缓存通讯
+服务提供者无状态，任意一台宕掉后，不影响使用
+服务提供者全部宕掉后，服务消费者应用将无法使用，并无限次重连等待服务提供者恢复
+(3) 伸缩性：
+
+注册中心为对等集群，可动态增加机器部署实例，所有客户端将自动发现新的注册中心
+服务提供者无状态，可动态增加机器部署实例，注册中心将推送新的服务提供者信息给消费者
+(4) 升级性：
+
+当服务集群规模进一步扩大，带动IT治理结构进一步升级，需要实现动态部署，进行流动计算，现有分布式服务架构不会带来阻力：
+
+
+Deployer: 自动部署服务的本地代理。
+Repository: 仓库用于存储服务应用发布包。
+Scheduler: 调度中心基于访问压力自动增减服务提供者。
+Admin: 统一管理控制台。
+用法
+(#)
+
+本地服务：(Spring配置)
+local.xml
+<bean id=“xxxService” class=“com.xxx.XxxServiceImpl” />
+ 
+<bean id=“xxxAction” class=“com.xxx.XxxAction”>
+    <property name=“xxxService” ref=“xxxService” />
+</bean>
+远程服务：(Spring配置)
+在本地服务的基础上，只需做简单配置，即可完成远程化：
+
+将上面的local.xml配置拆分成两份，将服务定义部分放在服务提供方remote-provider.xml，将服务引用部分放在服务消费方remote-consumer.xml。
+并在提供方增加暴露服务配置<dubbo:service>，在消费方增加引用服务配置<dubbo:reference>。
+如下：
+
+remote-provider.xml
+<bean id=“xxxService” class=“com.xxx.XxxServiceImpl” /> <!-- 和本地服务一样实现远程服务 -->
+ 
+<dubbo:service interface=“com.xxx.XxxService” ref=“xxxService” /> <!-- 增加暴露远程服务配置 -->
+remote-consumer.xml
+<dubbo:reference id=“xxxService” interface=“com.xxx.XxxService” /> <!-- 增加引用远程服务配置 -->
+ 
+<bean id=“xxxAction” class=“com.xxx.XxxAction”> <!-- 和本地服务一样使用远程服务 -->
+    <property name=“xxxService” ref=“xxxService” />
+</bean>
+快速启动
+(+) (#)
+
+	Dubbo采用全Spring配置方式，透明化接入应用，对应用没有任何API侵入，只需用Spring加载Dubbo的配置即可，Dubbo基于Spring的Schema扩展进行加载。
+	如果不想使用Spring配置，而希望通过API的方式进行调用（不推荐），请参见：API配置 (+)
+服务提供者
+(#)
+
+	完整安装步骤，请参见：示例提供者安装 (+)
+定义服务接口: (该接口需单独打包，在服务提供方和消费方共享)
+
+DemoService.java
+package com.alibaba.dubbo.demo;
+ 
+public interface DemoService {
+ 
+    String sayHello(String name);
+ 
+}
+在服务提供方实现接口：(对服务消费方隐藏实现)
+
+DemoServiceImpl.java
+package com.alibaba.dubbo.demo.provider;
+ 
+import com.alibaba.dubbo.demo.DemoService;
+ 
+public class DemoServiceImpl implements DemoService {
+ 
+    public String sayHello(String name) {
+        return "Hello " + name;
+    }
+ 
+}
+用Spring配置声明暴露服务：
+
+provider.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans        http://www.springframework.org/schema/beans/spring-beans.xsd        http://code.alibabatech.com/schema/dubbo        http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+ 
+    <!-- 提供方应用信息，用于计算依赖关系 -->
+    <dubbo:application name="hello-world-app"  />
+ 
+    <!-- 使用multicast广播注册中心暴露服务地址 -->
+    <dubbo:registry address="multicast://224.5.6.7:1234" />
+ 
+    <!-- 用dubbo协议在20880端口暴露服务 -->
+    <dubbo:protocol name="dubbo" port="20880" />
+ 
+    <!-- 声明需要暴露的服务接口 -->
+    <dubbo:service interface="com.alibaba.dubbo.demo.DemoService" ref="demoService" />
+ 
+    <!-- 和本地bean一样实现服务 -->
+    <bean id="demoService" class="com.alibaba.dubbo.demo.provider.DemoServiceImpl" />
+ 
+</beans>
+加载Spring配置：
+
+Provider.java
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+ 
+public class Provider {
+ 
+    public static void main(String[] args) throws Exception {
+        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[] {"http://10.20.160.198/wiki/display/dubbo/provider.xml"});
+        context.start();
+ 
+        System.in.read(); // 按任意键退出
+    }
+ 
+}
+服务消费者
+(#)
+
+	完整安装步骤，请参见：示例消费者安装 (+)
+通过Spring配置引用远程服务：
+
+consumer.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans        http://www.springframework.org/schema/beans/spring-beans.xsd        http://code.alibabatech.com/schema/dubbo        http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+ 
+    <!-- 消费方应用名，用于计算依赖关系，不是匹配条件，不要与提供方一样 -->
+    <dubbo:application name="consumer-of-helloworld-app"  />
+ 
+    <!-- 使用multicast广播注册中心暴露发现服务地址 -->
+    <dubbo:registry address="multicast://224.5.6.7:1234" />
+ 
+    <!-- 生成远程服务代理，可以和本地bean一样使用demoService -->
+    <dubbo:reference id="demoService" interface="com.alibaba.dubbo.demo.DemoService" />
+ 
+</beans>
+加载Spring配置，并调用远程服务：(也可以使用IoC注入)
+
+Consumer.java
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+import com.alibaba.dubbo.demo.DemoService;
+ 
+public class Consumer {
+ 
+    public static void main(String[] args) throws Exception {
+        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[] {"http://10.20.160.198/wiki/display/dubbo/consumer.xml"});
+        context.start();
+ 
+        DemoService demoService = (DemoService)context.getBean("demoService"); // 获取远程服务代理
+        String hello = demoService.sayHello("world"); // 执行远程方法
+ 
+        System.out.println( hello ); // 显示调用结果
+    }
+ 
+}
+依赖
+(+) (#)
+
+必需依赖
+JDK1.5+
+	理论上Dubbo可以只依赖JDK，不依赖于任何三方库运行，只需配置使用JDK相关实现策略。
+缺省依赖
+通过mvn dependency:tree > dep.log命令分析，Dubbo缺省依赖以下三方库：
+
+[INFO] +- com.alibaba:dubbo:jar:2.1.2:compile
+[INFO] |  +- log4j:log4j:jar:1.2.16:compile 
+[INFO] |  +- org.javassist:javassist:jar:3.15.0-GA:compile
+[INFO] |  +- org.springframework:spring:jar:2.5.6.SEC03:compile
+[INFO] |  +- commons-logging:commons-logging:jar:1.1.1:compile
+[INFO] |  \- org.jboss.netty:netty:jar:3.2.5.Final:compile
+这里所有依赖都是换照Dubbo缺省配置选的，这些缺省值是基于稳定性和性能考虑的。
+
+log4j.jar和commons-logging.jar日志输出包。
+可以直接去掉，dubbo本身的日志会自动切换为JDK的java.util.logging输出。
+但如果其它三方库比如spring.jar间接依赖commons-logging，则不能去掉。
+javassist.jar 字节码生成。
+如果<dubbo:provider proxy="jdk" />或<dubbo:consumer proxy="jdk" />，以及<dubbo:application compiler="jdk" />，则不需要。
+spring.jar 配置解析。
+如果用ServiceConfig和ReferenceConfig的API调用，则不需要。
+netty.jar 网络传输。
+如果<dubbo:protocol server="mina"/>或<dubbo:protocol server="grizzly"/>，则换成mina.jar或grizzly.jar。
+如果<protocol name="rmi"/>，则不需要。
+可选依赖
+以下依赖，在主动配置使用相应实现策略时用到，需自行加入依赖。
+
+mina: 1.1.7
+grizzly: 2.1.4
+httpclient: 4.1.2
+hessian_lite: 3.2.1-fixed
+xstream: 1.4.1
+fastjson: 1.1.8
+zookeeper: 3.3.3
+jedis: 2.0.0
+xmemcached: 1.3.6
+jfreechart: 1.0.13
+hessian: 4.0.7
+jetty: 6.1.26
+hibernate-validator: 4.2.0.Final
+zkclient: 0.1
+curator: 1.1.10
+cxf: 2.6.1
+thrift: 0.8.0
+JEE:
+
+servlet: 2.5
+bsf: 3.1
+validation-api: 1.0.0.GA
+jcache: 0.4
+成熟度
+(+) (#)
+
+功能成熟度
+(#)
+
+Feature	Maturity	Strength	Problem	Advise	User
+并发控制	Tested	并发控制	 	试用	 
+连接控制	Tested	连接数控制	 	试用	 
+直连提供者	Tested	点对点直连服务提供方，用于测试	 	测试环境使用	Alibaba
+分组聚合	Tested	分组聚合返回值，用于菜单聚合等服务	特殊场景使用	可用于生产环境	 
+参数验证	Tested	参数验证，JSR303验证框架集成	对性能有影响	试用	LaiWang
+结果缓存	Tested	结果缓存，用于加速请求	 	试用	 
+泛化引用	Stable	泛化调用，无需业务接口类进行远程调用，用于测试平台，开放网关桥接等	 	可用于生产环境	Alibaba
+泛化实现	Stable	泛化实现，无需业务接口类实现任意接口，用于Mock平台	 	可用于生产环境	Alibaba
+回声测试	Tested	回声测试	 	试用	 
+隐式传参	Stable	附加参数	 	可用于生产环境	 
+异步调用	Tested	不可靠异步调用	 	试用	 
+本地调用	Tested	本地调用	 	试用	 
+参数回调	Tested	参数回调	特殊场景使用	试用	Registry
+事件通知	Tested	事件通知，在远程调用执行前后触发	 	试用	 
+本地存根	Stable	在客户端执行部分逻辑	 	可用于生产环境	Alibaba
+本地伪装	Stable	伪造返回结果，可在失败时执行，或直接执行，用于服务降级	需注册中心支持	可用于生产环境	Alibaba
+延迟暴露	Stable	延迟暴露服务，用于等待应用加载warmup数据，或等待spring加载完成	 	可用于生产环境	Alibaba
+延迟连接	Tested	延迟建立连接，调用时建立	 	试用	Registry
+粘滞连接	Tested	粘滞连接，总是向同一个提供方发起请求，除非此提供方挂掉，再切换到另一台	 	试用	Registry
+令牌验证	Tested	令牌验证，用于服务授权	需注册中心支持	试用	 
+路由规则	Tested	动态决定调用关系	需注册中心支持	试用	 
+配置规则	Tested	动态下发配置，实现功能的开关	需注册中心支持	试用	 
+访问日志	Tested	访问日志，用于记录调用信息	本地存储，影响性能，受磁盘大小限制	试用	 
+分布式事务	Research	JTA/XA三阶段提交事务	不稳定	不可用	 
+策略成熟度
+(#)
+
+Feature	Maturity	Strength	Problem	Advise	User
+Zookeeper注册中心	Stable	支持基于网络的集群方式，有广泛周边开源产品，建议使用dubbo-2.3.3以上版本（推荐使用）	依赖于Zookeeper的稳定性	可用于生产环境	 
+Redis注册中心	Stable	支持基于客户端双写的集群方式，性能高	要求服务器时间同步，用于检查心跳过期脏数据	可用于生产环境	 
+Multicast注册中心	Tested	去中心化，不需要安装注册中心	依赖于网络拓普和路由，跨机房有风险	小规模应用或开发测试环境	 
+Simple注册中心	Tested	Dogfooding，注册中心本身也是一个标准的RPC服务	没有集群支持，可能单点故障	试用	 
+Feature	Maturity	Strength	Problem	Advise	User
+Simple监控中心	Stable	支持JFreeChart统计报表	没有集群支持，可能单点故障，但故障后不影响RPC运行	可用于生产环境	 
+Feature	Maturity	Strength	Problem	Advise	User
+Dubbo协议	Stable	采用NIO复用单一长连接，并使用线程池并发处理请求，减少握手和加大并发效率，性能较好（推荐使用）	在大文件传输时，单一连接会成为瓶颈	可用于生产环境	Alibaba
+Rmi协议	Stable	可与原生RMI互操作，基于TCP协议	偶尔会连接失败，需重建Stub	可用于生产环境	Alibaba
+Hessian协议	Stable	可与原生Hessian互操作，基于HTTP协议	需hessian.jar支持，http短连接的开销大	可用于生产环境	 
+Feature	Maturity	Strength	Problem	Advise	User
+Netty Transporter	Stable	JBoss的NIO框架，性能较好（推荐使用）	一次请求派发两种事件，需屏蔽无用事件	可用于生产环境	Alibaba
+Mina Transporter	Stable	老牌NIO框架，稳定	待发送消息队列派发不及时，大压力下，会出现FullGC	可用于生产环境	Alibaba
+Grizzly Transporter	Tested	Sun的NIO框架，应用于GlassFish服务器中	线程池不可扩展，Filter不能拦截下一Filter	试用	 
+Feature	Maturity	Strength	Problem	Advise	User
+Hessian Serialization	Stable	性能较好，多语言支持（推荐使用）	Hessian的各版本兼容性不好，可能和应用使用的Hessian冲突，Dubbo内嵌了hessian3.2.1的源码	可用于生产环境	Alibaba
+Dubbo Serialization	Tested	通过不传送POJO的类元信息，在大量POJO传输时，性能较好	当参数对象增加字段时，需外部文件声明	试用	 
+Json Serialization	Tested	纯文本，可跨语言解析，缺省采用FastJson解析	性能较差	试用	 
+Java Serialization	Stable	Java原生支持	性能较差	可用于生产环境	 
+Feature	Maturity	Strength	Problem	Advise	User
+Javassist ProxyFactory	Stable	通过字节码生成代替反射，性能比较好（推荐使用）	依赖于javassist.jar包，占用JVM的Perm内存，Perm可能要设大一些：java -XX:PermSize=128m	可用于生产环境	Alibaba
+Jdk ProxyFactory	Stable	JDK原生支持	性能较差	可用于生产环境	 
+Feature	Maturity	Strength	Problem	Advise	User
+Failover Cluster	Stable	失败自动切换，当出现失败，重试其它服务器，通常用于读操作（推荐使用）	重试会带来更长延迟	可用于生产环境	Alibaba
+Failfast Cluster	Stable	快速失败，只发起一次调用，失败立即报错,通常用于非幂等性的写操作	如果有机器正在重启，可能会出现调用失败	可用于生产环境	Alibaba
+Failsafe Cluster	Stable	失败安全，出现异常时，直接忽略，通常用于写入审计日志等操作	调用信息丢失	可用于生产环境	Monitor
+Failback Cluster	Tested	失败自动恢复，后台记录失败请求，定时重发，通常用于消息通知操作	不可靠，重启丢失	可用于生产环境	Registry
+Forking Cluster	Tested	并行调用多个服务器，只要一个成功即返回，通常用于实时性要求较高的读操作	需要浪费更多服务资源	可用于生产环境	 
+Broadcast Cluster	Tested	广播调用所有提供者，逐个调用，任意一台报错则报错，通常用于更新提供方本地状态	速度慢，任意一台报错则报错	可用于生产环境	 
+Feature	Maturity	Strength	Problem	Advise	User
+Random LoadBalance	Stable	随机，按权重设置随机概率（推荐使用）	在一个截面上碰撞的概率高，重试时，可能出现瞬间压力不均	可用于生产环境	Alibaba
+RoundRobin LoadBalance	Stable	轮循，按公约后的权重设置轮循比率	存在慢的机器累积请求问题，极端情况可能产生雪崩	可用于生产环境	 
+LeastActive LoadBalance	Stable	最少活跃调用数，相同活跃数的随机，活跃数指调用前后计数差，使慢的机器收到更少请求	不支持权重，在容量规划时，不能通过权重把压力导向一台机器压测容量	可用于生产环境	 
+ConsistentHash LoadBalance	Stable	一致性Hash，相同参数的请求总是发到同一提供者，当某一台提供者挂时，原本发往该提供者的请求，基于虚拟节点，平摊到其它提供者，不会引起剧烈变动	压力分摊不均	可用于生产环境	 
+Feature	Maturity	Strength	Problem	Advise	User
+条件路由规则	Stable	基于条件表达式的路由规则，功能简单易用	有些复杂多分支条件情况，规则很难描述	可用于生产环境	Alibaba
+脚本路由规则	Tested	基于脚本引擎的路由规则，功能强大	没有运行沙箱，脚本能力过于强大，可能成为后门	试用	 
+Feature	Maturity	Strength	Problem	Advise	User
+Spring Container	Stable	自动加载META-INF/spring目录下的所有Spring配置	 	可用于生产环境	Alibaba
+Jetty Container	Stable	启动一个内嵌Jetty，用于汇报状态	大量访问页面时，会影响服务器的线程和内存	可用于生产环境	Alibaba
+Log4j Container	Stable	自动配置log4j的配置，在多进程启动时，自动给日志文件按进程分目录	用户不能控制log4j的配置，不灵活	可用于生产环境	Alibaba
+配置
+(+) (#)
+
+Xml配置
+(+) (#)
+
+	配置项说明
+详细配置项，请参见：配置参考手册 (+)
+	API使用说明
+如果不想使用Spring配置，而希望通过API的方式进行调用，请参见：API配置 (+)
+	配置使用说明
+想知道如何使用配置，请参见：快速启动 (+)
+示例：
+
+provider.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans        http://www.springframework.org/schema/beans/spring-beans.xsd        http://code.alibabatech.com/schema/dubbo        http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+ 
+    <dubbo:application name="hello-world-app"  />
+ 
+    <dubbo:registry address="multicast://224.5.6.7:1234" />
+ 
+    <dubbo:protocol name="dubbo" port="20880" />
+ 
+    <dubbo:service interface="com.alibaba.dubbo.demo.DemoService" ref="demoServiceLocal" />
+ 
+    <dubbo:reference id="demoServiceRemote" interface="com.alibaba.dubbo.demo.DemoService" />
+ 
+</beans>
+	所有标签者支持自定义参数，用于不同扩展点实现的特殊配置。
+如：
+
+<dubbo:protocol name="jms">
+    <dubbo:parameter key="queue" value="http://10.20.160.198/wiki/display/dubbo/10.20.31.22" />
+</dubbo:protocol>
+或：(2.1.0开始支持)
+
+	注意声明：xmlns:p="http://www.springframework.org/schema/p"
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xmlns:p="http://www.springframework.org/schema/p"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans        http://www.springframework.org/schema/beans/spring-beans.xsd        http://code.alibabatech.com/schema/dubbo        http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+ 
+    <dubbo:protocol name="jms" p:queue="http://10.20.160.198/wiki/display/dubbo/10.20.31.22" />
+ 
+</beans>
+Configuration Relation:
+
+
+
+<dubbo:service/> 服务配置，用于暴露一个服务，定义服务的元信息，一个服务可以用多个协议暴露，一个服务也可以注册到多个注册中心。
+<dubbo:reference/> 引用配置，用于创建一个远程服务代理，一个引用可以指向多个注册中心。
+<dubbo:protocol/> 协议配置，用于配置提供服务的协议信息，协议由提供方指定，消费方被动接受。
+<dubbo:application/> 应用配置，用于配置当前应用信息，不管该应用是提供者还是消费者。
+<dubbo:module/> 模块配置，用于配置当前模块信息，可选。
+<dubbo:registry/> 注册中心配置，用于配置连接注册中心相关信息。
+<dubbo:monitor/> 监控中心配置，用于配置连接监控中心相关信息，可选。
+<dubbo:provider/> 提供方的缺省值，当ProtocolConfig和ServiceConfig某属性没有配置时，采用此缺省值，可选。
+<dubbo:consumer/> 消费方缺省配置，当ReferenceConfig某属性没有配置时，采用此缺省值，可选。
+<dubbo:method/> 方法配置，用于ServiceConfig和ReferenceConfig指定方法级的配置信息。
+<dubbo:argument/> 用于指定方法参数配置。
+Configuration Override:
+
+
+
+上图中以timeout为例，显示了配置的查找顺序，其它retries, loadbalance, actives等类似。
+方法级优先，接口级次之，全局配置再次之。
+如果级别一样，则消费方优先，提供方次之。
+其中，服务提供方配置，通过URL经由注册中心传递给消费方。
+建议由服务提供方设置超时，因为一个方法需要执行多长时间，服务提供方更清楚，如果一个消费方同时引用多个服务，就不需要关心每个服务的超时设置。
+理论上ReferenceConfig的非服务标识配置，在ConsumerConfig，ServiceConfig, ProviderConfig均可以缺省配置。
+属性配置
+(+) (#)
+
+	如果公共配置很简单，没有多注册中心，多协议等情况，或者想多个Spring容器想共享配置，可以使用dubbo.properties作为缺省配置。
+	Dubbo将自动加载classpath根目录下的dubbo.properties，可以通过JVM启动参数：-Ddubbo.properties.file=xxx.properties 改变缺省配置位置。
+	如果classpath根目录下存在多个dubbo.properties，比如多个jar包中有dubbo.properties，Dubbo会任意加载，并打印Error日志，后续可能改为抛异常。
+映射规则：
+
+将XML配置的标签名，加属性名，用点分隔，多个属性拆成多行：
+比如：dubbo.application.name=foo等价于<dubbo:application name="foo" />
+比如：dubbo.registry.address=10.20.153.10:9090等价于<dubbo:registry address="10.20.153.10:9090" />
+如果XML有多行同名标签配置，可用id号区分，如果没有id号将对所有同名标签生效：
+比如：dubbo.protocol.rmi.port=1234等价于<dubbo:protocol id="rmi" name="rmi" port="1099" /> (协议的id没配时，缺省使用协议名作为id)
+比如：dubbo.registry.china.address=10.20.153.10:9090等价于<dubbo:registry id="china" address="10.20.153.10:9090" />
+典型配置如：
+
+dubbo.properties
+dubbo.application.name=foo
+dubbo.application.owner=bar
+dubbo.registry.address=10.20.153.10:9090
+
+
+覆盖策略：
+
+JVM启动-D参数优先，这样可以使用户在部署和启动时进行参数重写，比如在启动时需改变协议的端口。
+XML次之，如果在XML中有配置，则dubbo.properties中的相应配置项无效。
+Properties最后，相当于缺省值，只有XML没有配置时，dubbo.properties的相应配置项才会生效，通常用于共享公共配置，比如应用名。
+注解配置
+(+) (#)
+
+	2.2.1以上版本支持
+服务提供方注解：
+
+import com.alibaba.dubbo.config.annotation.Service;
+ 
+@Service(version="1.0.0")
+public class FooServiceImpl implements FooService {
+ 
+    // ......
+ 
+}
+服务提供方配置：
+
+<!-- 公共信息，也可以用dubbo.properties配置 -->
+<dubbo:application name="annotation-provider" />
+<dubbo:registry address="127.0.0.1:4548" />
+ 
+<!-- 扫描注解包路径，多个包用逗号分隔，不填pacakge表示扫描当前ApplicationContext中所有的类 -->
+<dubbo:annotation package="com.foo.bar.service" />
+服务消费方注解：
+
+import com.alibaba.dubbo.config.annotation.Reference;
+import org.springframework.stereotype.Component;
+ 
+@Component
+public class BarAction {
+ 
+    @Reference(version="1.0.0")
+    private FooService fooService;
+ 
+}
+服务消费方配置：
+
+<!-- 公共信息，也可以用dubbo.properties配置 -->
+<dubbo:application name="annotation-consumer" />
+<dubbo:registry address="127.0.0.1:4548" />
+ 
+<!-- 扫描注解包路径，多个包用逗号分隔，不填pacakge表示扫描当前ApplicationContext中所有的类 -->
+<dubbo:annotation package="com.foo.bar.action" />
+也可以使用：(等价于前面的：<dubbo:annotation package="com.foo.bar.service" />)
+
+<dubbo:annotation />
+<context:component-scan base-package="com.foo.bar.service">
+    <context:include-filter type="annotation" expression="com.alibaba.dubbo.config.annotation.Service" />
+</context:component-scan>
+	Spring2.5及以后版本支持component-scan，如果用的是Spring2.0及以前版本，需配置：
+<!-- Spring2.0支持@Service注解配置，但不支持package属性自动加载bean的实例，需人工定义bean的实例。-->
+<dubbo:annotation />
+<bean id="barService" class="com.foo.BarServiceImpl" />
+API配置
+(+) (#)
+
+	API使用范围
+API仅用于OpenAPI, ESB, Test, Mock等系统集成，普通服务提供方或消费方，请采用配置方式使用Dubbo，请参见：Xml配置 (+)
+	API属性含义参考
+API属性与配置项一对一，各属性含义，请参见：配置参考手册 (+)，
+比如：ApplicationConfig.setName("xxx") 对应 <dubbo:application name="xxx" />
+(1) 服务提供者：
+import com.alibaba.dubbo.rpc.config.ApplicationConfig;
+import com.alibaba.dubbo.rpc.config.RegistryConfig;
+import com.alibaba.dubbo.rpc.config.ProviderConfig;
+import com.alibaba.dubbo.rpc.config.ServiceConfig;
+import com.xxx.XxxService;
+import com.xxx.XxxServiceImpl;
+ 
+// 服务实现
+XxxService xxxService = new XxxServiceImpl();
+ 
+// 当前应用配置
+ApplicationConfig application = new ApplicationConfig();
+application.setName("xxx");
+ 
+// 连接注册中心配置
+RegistryConfig registry = new RegistryConfig();
+registry.setAddress("10.20.130.230:9090");
+registry.setUsername("aaa");
+registry.setPassword("bbb");
+ 
+// 服务提供者协议配置
+ProtocolConfig protocol = new ProtocolConfig();
+protocol.setName("dubbo");
+protocol.setPort(12345);
+protocol.setThreads(200);
+ 
+// 注意：ServiceConfig为重对象，内部封装了与注册中心的连接，以及开启服务端口
+ 
+// 服务提供者暴露服务配置
+ServiceConfig<XxxService> service = new ServiceConfig<XxxService>(); // 此实例很重，封装了与注册中心的连接，请自行缓存，否则可能造成内存和连接泄漏
+service.setApplication(application);
+service.setRegistry(registry); // 多个注册中心可以用setRegistries()
+service.setProtocol(protocol); // 多个协议可以用setProtocols()
+service.setInterface(XxxService.class);
+service.setRef(xxxService);
+service.setVersion("1.0.0");
+ 
+// 暴露及注册服务
+service.export();
+(2) 服务消费者：
+import com.alibaba.dubbo.rpc.config.ApplicationConfig;
+import com.alibaba.dubbo.rpc.config.RegistryConfig;
+import com.alibaba.dubbo.rpc.config.ConsumerConfig;
+import com.alibaba.dubbo.rpc.config.ReferenceConfig;
+import com.xxx.XxxService;
+ 
+// 当前应用配置
+ApplicationConfig application = new ApplicationConfig();
+application.setName("yyy");
+ 
+// 连接注册中心配置
+RegistryConfig registry = new RegistryConfig();
+registry.setAddress("10.20.130.230:9090");
+registry.setUsername("aaa");
+registry.setPassword("bbb");
+ 
+// 注意：ReferenceConfig为重对象，内部封装了与注册中心的连接，以及与服务提供方的连接
+ 
+// 引用远程服务
+ReferenceConfig<XxxService> reference = new ReferenceConfig<XxxService>(); // 此实例很重，封装了与注册中心的连接以及与提供者的连接，请自行缓存，否则可能造成内存和连接泄漏
+reference.setApplication(application);
+reference.setRegistry(registry); // 多个注册中心可以用setRegistries()
+reference.setInterface(XxxService.class);
+reference.setVersion("1.0.0");
+ 
+// 和本地bean一样使用xxxService
+XxxService xxxService = reference.get(); // 注意：此代理对象内部封装了所有通讯细节，对象较重，请缓存复用
+(3) 特殊场景
+注：下面只列出不同的地方，其它参见上面的写法
+
+(3.1) 方法级设置：
+...
+ 
+// 方法级配置
+List<MethodConfig> methods = new ArrayList<MethodConfig>();
+MethodConfig method = new MethodConfig();
+method.setName("createXxx");
+method.setTimeout(10000);
+method.setRetries(0);
+methods.add(method);
+ 
+// 引用远程服务
+ReferenceConfig<XxxService> reference = new ReferenceConfig<XxxService>(); // 此实例很重，封装了与注册中心的连接以及与提供者的连接，请自行缓存，否则可能造成内存和连接泄漏
+...
+reference.setMethods(methods); // 设置方法级配置
+ 
+...
+(3.2) 点对点直连：
+...
+ 
+ReferenceConfig<XxxService> reference = new ReferenceConfig<XxxService>(); // 此实例很重，封装了与注册中心的连接以及与提供者的连接，请自行缓存，否则可能造成内存和连接泄漏
+// 如果点对点直连，可以用reference.setUrl()指定目标地址，设置url后将绕过注册中心，
+// 其中，协议对应provider.setProtocol()的值，端口对应provider.setPort()的值，
+// 路径对应service.setPath()的值，如果未设置path，缺省path为接口名
+reference.setUrl("dubbo://10.20.130.230:20880/com.xxx.XxxService"); 
+ 
+...
+示例
+(+) (#)
+
+	想完整的运行起来，请参见：快速启动 (+)，这里只列出各种场景的配置方式
+	以下示例全部使用基于Spring的Xml配置 (+)作为参考，如果不想使用Spring，而希望通过API的方式进行调用，请参见：API配置 (+)
+启动时检查
+(+) (#)
+
+	Dubbo缺省会在启动时检查依赖的服务是否可用，不可用时会抛出异常，阻止Spring初始化完成，以便上线时，能及早发现问题，默认check=true。
+	如果你的Spring容器是懒加载的，或者通过API编程延迟引用服务，请关闭check，否则服务临时不可用时，会抛出异常，拿到null引用，如果check=false，总是会返回引用，当服务恢复时，能自动连上。
+可以通过check="false"关闭检查，比如，测试时，有些服务不关心，或者出现了循环依赖，必须有一方先启动。
+
+关闭某个服务的启动时检查：(没有提供者时报错)
+
+<dubbo:reference interface="com.foo.BarService" check="false" />
+关闭所有服务的启动时检查：(没有提供者时报错)
+
+<dubbo:consumer check="false" />
+关闭注册中心启动时检查：(注册订阅失败时报错)
+
+<dubbo:registry check="false" />
+也可以用dubbo.properties配置：
+
+dubbo.properties
+dubbo.reference.com.foo.BarService.check=false
+dubbo.reference.check=false
+dubbo.consumer.check=false
+dubbo.registry.check=false
+也可以用-D参数：
+
+java -Ddubbo.reference.com.foo.BarService.check=false
+java -Ddubbo.reference.check=false
+java -Ddubbo.consumer.check=false 
+java -Ddubbo.registry.check=false
+	注意区别
+dubbo.reference.check=false，强制改变所有reference的check值，就算配置中有声明，也会被覆盖。
+dubbo.consumer.check=false，是设置check的缺省值，如果配置中有显式的声明，如：<dubbo:reference check="true"/>，不会受影响。
+dubbo.registry.check=false，前面两个都是指订阅成功，但提供者列表是否为空是否报错，如果注册订阅失败时，也允许启动，需使用此选项，将在后台定时重试。
+引用缺省是延迟初始化的，只有引用被注入到其它Bean，或被getBean()获取，才会初始化。
+如果需要饥饿加载，即没有人引用也立即生成动态代理，可以配置：
+
+<dubbo:reference interface="com.foo.BarService" init="true" />
+集群容错
+(+) (#)
+
+	在集群调用失败时，Dubbo提供了多种容错方案，缺省为failover重试。
+
+
+各节点关系：
+
+这里的Invoker是Provider的一个可调用Service的抽象，Invoker封装了Provider地址及Service接口信息。
+Directory代表多个Invoker，可以把它看成List<Invoker>，但与List不同的是，它的值可能是动态变化的，比如注册中心推送变更。
+Cluster将Directory中的多个Invoker伪装成一个Invoker，对上层透明，伪装过程包含了容错逻辑，调用失败后，重试另一个。
+Router负责从多个Invoker中按路由规则选出子集，比如读写分离，应用隔离等。
+LoadBalance负责从多个Invoker中选出具体的一个用于本次调用，选的过程包含了负载均衡算法，调用失败后，需要重选。
+集群容错模式：
+可以自行扩展集群容错策略，参见：集群扩展
+
+Failover Cluster
+失败自动切换，当出现失败，重试其它服务器。(缺省)
+通常用于读操作，但重试会带来更长延迟。
+可通过retries="2"来设置重试次数(不含第一次)。
+Failfast Cluster
+快速失败，只发起一次调用，失败立即报错。
+通常用于非幂等性的写操作，比如新增记录。
+Failsafe Cluster
+失败安全，出现异常时，直接忽略。
+通常用于写入审计日志等操作。
+Failback Cluster
+失败自动恢复，后台记录失败请求，定时重发。
+通常用于消息通知操作。
+Forking Cluster
+并行调用多个服务器，只要一个成功即返回。
+通常用于实时性要求较高的读操作，但需要浪费更多服务资源。
+可通过forks="2"来设置最大并行数。
+Broadcast Cluster
+广播调用所有提供者，逐个调用，任意一台报错则报错。(2.1.0开始支持)
+通常用于通知所有提供者更新缓存或日志等本地资源信息。
+重试次数配置如：(failover集群模式生效)
+
+<dubbo:service retries="2" />
+或：
+
+<dubbo:reference retries="2" />
+或：
+
+<dubbo:reference>
+    <dubbo:method name="findFoo" retries="2" />
+</dubbo:reference>
+集群模式配置如：
+
+<dubbo:service cluster="failsafe" />
+或：
+
+<dubbo:reference cluster="failsafe" />
+负载均衡
+(+) (#)
+
+	在集群负载均衡时，Dubbo提供了多种均衡策略，缺省为random随机调用。
+可以自行扩展负载均衡策略，参见：负载均衡扩展
+
+Random LoadBalance
+随机，按权重设置随机概率。
+在一个截面上碰撞的概率高，但调用量越大分布越均匀，而且按概率使用权重后也比较均匀，有利于动态调整提供者权重。
+RoundRobin LoadBalance
+轮循，按公约后的权重设置轮循比率。
+存在慢的提供者累积请求问题，比如：第二台机器很慢，但没挂，当请求调到第二台时就卡在那，久而久之，所有请求都卡在调到第二台上。
+LeastActive LoadBalance
+最少活跃调用数，相同活跃数的随机，活跃数指调用前后计数差。
+使慢的提供者收到更少请求，因为越慢的提供者的调用前后计数差会越大。
+ConsistentHash LoadBalance
+一致性Hash，相同参数的请求总是发到同一提供者。
+当某一台提供者挂时，原本发往该提供者的请求，基于虚拟节点，平摊到其它提供者，不会引起剧烈变动。
+算法参见：http://en.wikipedia.org/wiki/Consistent_hashing。
+缺省只对第一个参数Hash，如果要修改，请配置<dubbo:parameter key="hash.arguments" value="0,1" />
+缺省用160份虚拟节点，如果要修改，请配置<dubbo:parameter key="hash.nodes" value="320" />
+配置如：
+
+<dubbo:service interface="..." loadbalance="roundrobin" />
+或：
+
+<dubbo:reference interface="..." loadbalance="roundrobin" />
+或：
+
+<dubbo:service interface="...">
+    <dubbo:method name="..." loadbalance="roundrobin"/>
+</dubbo:service>
+或：
+
+<dubbo:reference interface="...">
+    <dubbo:method name="..." loadbalance="roundrobin"/>
+</dubbo:reference>
+线程模型
+(+) (#)
+
+
+
+	事件处理线程说明
+如果事件处理的逻辑能迅速完成，并且不会发起新的IO请求，比如只是在内存中记个标识，则直接在IO线程上处理更快，因为减少了线程池调度。
+但如果事件处理逻辑较慢，或者需要发起新的IO请求，比如需要查询数据库，则必须派发到线程池，否则IO线程阻塞，将导致不能接收其它请求。
+如果用IO线程处理事件，又在事件处理过程中发起新的IO请求，比如在连接事件中发起登录请求，会报“可能引发死锁”异常，但不会真死锁。
+Dispatcher
+all 所有消息都派发到线程池，包括请求，响应，连接事件，断开事件，心跳等。
+direct 所有消息都不派发到线程池，全部在IO线程上直接执行。
+message 只有请求响应消息派发到线程池，其它连接断开事件，心跳等消息，直接在IO线程上执行。
+execution 只请求消息派发到线程池，不含响应，响应和其它连接断开事件，心跳等消息，直接在IO线程上执行。
+connection 在IO线程上，将连接断开事件放入队列，有序逐个执行，其它消息派发到线程池。
+ThreadPool
+fixed 固定大小线程池，启动时建立线程，不关闭，一直持有。(缺省)
+cached 缓存线程池，空闲一分钟自动删除，需要时重建。
+limited 可伸缩线程池，但池中的线程数只会增长不会收缩。(为避免收缩时突然来了大流量引起的性能问题)。
+配置如：
+
+<dubbo:protocol name="dubbo" dispatcher="all" threadpool="fixed" threads="100" />
+直连提供者
+(+) (#)
+
+在开发及测试环境下，经常需要绕过注册中心，只测试指定服务提供者，这时候可能需要点对点直连，
+点对点直联方式，将以服务接口为单位，忽略注册中心的提供者列表，
+A接口配置点对点，不影响B接口从注册中心获取列表。
+
+
+
+(1) 如果是线上需求需要点对点，可在<dubbo:reference>中配置url指向提供者，将绕过注册中心，多个地址用分号隔开，配置如下：(1.0.6及以上版本支持)
+
+<dubbo:reference id="xxxService" interface="com.alibaba.xxx.XxxService" url="dubbo://localhost:20890" />
+(2) 在JVM启动参数中加入-D参数映射服务地址，如：
+(key为服务名，value为服务提供者url，此配置优先级最高，1.0.15及以上版本支持)
+
+java -Dcom.alibaba.xxx.XxxService=dubbo://localhost:20890
+	注意
+为了避免复杂化线上环境，不要在线上使用这个功能，只应在测试阶段使用。
+(3) 如果服务比较多，也可以用文件映射，如：
+(用-Ddubbo.resolve.file指定映射文件路径，此配置优先级高于<dubbo:reference>中的配置，1.0.15及以上版本支持)
+(2.0以上版本自动加载${user.home}/dubbo-resolve.properties文件，不需要配置)
+
+java -Ddubbo.resolve.file=xxx.properties
+然后在映射文件xxx.properties中加入：
+(key为服务名，value为服务提供者url)
+
+com.alibaba.xxx.XxxService=dubbo://localhost:20890
+	注意
+为了避免复杂化线上环境，不要在线上使用这个功能，只应在测试阶段使用。
+只订阅
+(+) (#)
+
+	问题
+为方便开发测试，经常会在线下共用一个所有服务可用的注册中心，这时，如果一个正在开发中的服务提供者注册，可能会影响消费者不能正常运行。
+	解决方案
+可以让服务提供者开发方，只订阅服务(开发的服务可能依赖其它服务)，而不注册正在开发的服务，通过直连测试正在开发的服务。
+
+
+禁用注册配置：
+
+<dubbo:registry address="10.20.153.10:9090" register="false" />
+或者：
+
+<dubbo:registry address="10.20.153.10:9090?register=false" />
+只注册
+(+) (#)
+
+	问题
+如果有两个镜像环境，两个注册中心，有一个服务只在其中一个注册中心有部署，另一个注册中心还没来得及部署，而两个注册中心的其它应用都需要依赖此服务，所以需要将服务同时注册到两个注册中心，但却不能让此服务同时依赖两个注册中心的其它服务。
+	解决方案
+可以让服务提供者方，只注册服务到另一注册中心，而不从另一注册中心订阅服务。
+禁用订阅配置：
+
+<dubbo:registry id="hzRegistry" address="10.20.153.10:9090" />
+<dubbo:registry id="qdRegistry" address="10.20.141.150:9090" subscribe="false" />
+或者：
+
+<dubbo:registry id="hzRegistry" address="10.20.153.10:9090" />
+<dubbo:registry id="qdRegistry" address="10.20.141.150:9090?subscribe=false" />
+静态服务
+(+) (#)
+
+	有时候希望人工管理服务提供者的上线和下线，此时需将注册中心标识为非动态管理模式。
+<dubbo:registry address="10.20.141.150:9090" dynamic="false" />
+或者：
+
+<dubbo:registry address="10.20.141.150:9090?dynamic=false" />
+服务提供者初次注册时为禁用状态，需人工启用，断线时，将不会被自动删除，需人工禁用。
+
+如果是一个第三方独立提供者，比如memcached等，可以直接向注册中心写入提供者地址信息，消费者正常使用：
+(通常由脚本监控中心页面等调用)
+
+RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
+Registry registry = registryFactory.getRegistry(URL.valueOf("zookeeper://10.20.153.10:2181"));
+registry.register(URL.valueOf("memcached://10.20.153.11/com.foo.BarService?category=providers&dynamic=false&application=foo"));
+多协议
+(+) (#)
+
+可以自行扩展协议，参见：协议扩展
+
+(1) 不同服务不同协议
+比如：不同服务在性能上适用不同协议进行传输，比如大数据用短连接协议，小数据大并发用长连接协议。
+
+consumer.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beanshttp://www.springframework.org/schema/beans/spring-beans.xsdhttp://code.alibabatech.com/schema/dubbohttp://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+ 
+    <dubbo:application name="world"  />
+    <dubbo:registry id="registry" address="10.20.141.150:9090" username="admin" password="hello1234" />
+ 
+    <!-- 多协议配置 -->
+    <dubbo:protocol name="dubbo" port="20880" />
+    <dubbo:protocol name="rmi" port="1099" />
+ 
+    <!-- 使用dubbo协议暴露服务 -->
+    <dubbo:service interface="com.alibaba.hello.api.HelloService" version="1.0.0" ref="helloService" protocol="dubbo" />
+    <!-- 使用rmi协议暴露服务 -->
+    <dubbo:service interface="com.alibaba.hello.api.DemoService" version="1.0.0" ref="demoService" protocol="rmi" />
+ 
+</beans>
+(2) 多协议暴露服务
+比如：需要与http客户端互操作
+
+consumer.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beanshttp://www.springframework.org/schema/beans/spring-beans.xsdhttp://code.alibabatech.com/schema/dubbohttp://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+ 
+    <dubbo:application name="world"  />
+    <dubbo:registry id="registry" address="10.20.141.150:9090" username="admin" password="hello1234" />
+ 
+    <!-- 多协议配置 -->
+    <dubbo:protocol name="dubbo" port="20880" />
+    <dubbo:protocol name="hessian" port="8080" />
+ 
+    <!-- 使用多个协议暴露服务 -->
+    <dubbo:service id="helloService" interface="com.alibaba.hello.api.HelloService" version="1.0.0" protocol="dubbo,hessian" />
+ 
+</beans>
+多注册中心
+(+) (#)
+
+可以自行扩展注册中心，参见：注册中心扩展
+
+(1) 多注册中心注册
+比如：中文站有些服务来不及在青岛部署，只在杭州部署，而青岛的其它应用需要引用此服务，就可以将服务同时注册到两个注册中心。
+
+consumer.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beanshttp://www.springframework.org/schema/beans/spring-beans.xsdhttp://code.alibabatech.com/schema/dubbohttp://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+ 
+    <dubbo:application name="world"  />
+ 
+    <!-- 多注册中心配置 -->
+    <dubbo:registry id="hangzhouRegistry" address="10.20.141.150:9090" />
+    <dubbo:registry id="qingdaoRegistry" address="10.20.141.151:9010" default="false" />
+ 
+    <!-- 向多个注册中心注册 -->
+    <dubbo:service interface="com.alibaba.hello.api.HelloService" version="1.0.0" ref="helloService" registry="hangzhouRegistry,qingdaoRegistry" />
+ 
+</beans>
+(2) 不同服务使用不同注册中心
+比如：CRM有些服务是专门为国际站设计的，有些服务是专门为中文站设计的。
+
+consumer.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beanshttp://www.springframework.org/schema/beans/spring-beans.xsdhttp://code.alibabatech.com/schema/dubbohttp://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+ 
+    <dubbo:application name="world"  />
+ 
+    <!-- 多注册中心配置 -->
+    <dubbo:registry id="chinaRegistry" address="10.20.141.150:9090" />
+    <dubbo:registry id="intlRegistry" address="10.20.154.177:9010" default="false" />
+ 
+    <!-- 向中文站注册中心注册 -->
+    <dubbo:service interface="com.alibaba.hello.api.HelloService" version="1.0.0" ref="helloService" registry="chinaRegistry" />
+ 
+    <!-- 向国际站注册中心注册 -->
+    <dubbo:service interface="com.alibaba.hello.api.DemoService" version="1.0.0" ref="demoService" registry="intlRegistry" />
+ 
+</beans>
+(3) 多注册中心引用
+比如：CRM需同时调用中文站和国际站的PC2服务，PC2在中文站和国际站均有部署，接口及版本号都一样，但连的数据库不一样。
+
+consumer.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beanshttp://www.springframework.org/schema/beans/spring-beans.xsdhttp://code.alibabatech.com/schema/dubbohttp://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+ 
+    <dubbo:application name="world"  />
+ 
+    <!-- 多注册中心配置 -->
+    <dubbo:registry id="chinaRegistry" address="10.20.141.150:9090" />
+    <dubbo:registry id="intlRegistry" address="10.20.154.177:9010" default="false" />
+ 
+    <!-- 引用中文站服务 -->
+    <dubbo:reference id="chinaHelloService" interface="com.alibaba.hello.api.HelloService" version="1.0.0" registry="chinaRegistry" />
+ 
+    <!-- 引用国际站站服务 -->
+    <dubbo:reference id="intlHelloService" interface="com.alibaba.hello.api.HelloService" version="1.0.0" registry="intlRegistry" />
+ 
+</beans>
+如果只是测试环境临时需要连接两个不同注册中心，使用竖号分隔多个不同注册中心地址：
+
+consumer.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beanshttp://www.springframework.org/schema/beans/spring-beans.xsdhttp://code.alibabatech.com/schema/dubbohttp://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+ 
+    <dubbo:application name="world"  />
+ 
+    <!-- 多注册中心配置，竖号分隔表示同时连接多个不同注册中心，同一注册中心的多个集群地址用逗号分隔 -->
+    <dubbo:registry address="10.20.141.150:9090|10.20.154.177:9010" />
+ 
+    <!-- 引用服务 -->
+    <dubbo:reference id="helloService" interface="com.alibaba.hello.api.HelloService" version="1.0.0" />
+ 
+</beans>
+服务分组
+(+) (#)
+
+	当一个接口有多种实现时，可以用group区分。
+<dubbo:service group="feedback" interface="com.xxx.IndexService" />
+<dubbo:service group="member" interface="com.xxx.IndexService" />
+<dubbo:reference id="feedbackIndexService" group="feedback" interface="com.xxx.IndexService" />
+<dubbo:reference id="memberIndexService" group="member" interface="com.xxx.IndexService" />
+任意组：(2.2.0以上版本支持，总是只调一个可用组的实现)
+
+<dubbo:reference id="barService" interface="com.foo.BarService" group="*" />
+多版本
+(+) (#)
+
+	当一个接口实现，出现不兼容升级时，可以用版本号过渡，版本号不同的服务相互间不引用。
+在低压力时间段，先升级一半提供者为新版本
+再将所有消费者升级为新版本
+然后将剩下的一半提供者升级为新版本
+<dubbo:service interface="com.foo.BarService" version="1.0.0" />
+<dubbo:service interface="com.foo.BarService" version="2.0.0" />
+<dubbo:reference id="barService" interface="com.foo.BarService" version="1.0.0" />
+<dubbo:reference id="barService" interface="com.foo.BarService" version="2.0.0" />
+不区分版本：(2.2.0以上版本支持)
+
+<dubbo:reference id="barService" interface="com.foo.BarService" version="*" />
+分组聚合
+(+) (#)
+
+	按组合并返回结果，比如菜单服务，接口一样，但有多种实现，用group区分，现在消费方需从每种group中调用一次返回结果，合并结果返回，这样就可以实现聚合菜单项。
+	从2.1.0版本开始支持
+
+
+代码参见：https://github.com/alibaba/dubbo/tree/master/dubbo-test/dubbo-test-examples/src/main/java/com/alibaba/dubbo/examples/merge
+
+配置如：(搜索所有分组)
+
+<dubbo:reference interface="com.xxx.MenuService" group="*" merger="true" />
+或：(合并指定分组)
+
+<dubbo:reference interface="com.xxx.MenuService" group="aaa,bbb" merger="true" />
+或：(指定方法合并结果，其它未指定的方法，将只调用一个Group)
+
+<dubbo:reference interface="com.xxx.MenuService" group="*">
+    <dubbo:method name="getMenuItems" merger="true" />
+</dubbo:service>
+或：(某个方法不合并结果，其它都合并结果)
+
+<dubbo:reference interface="com.xxx.MenuService" group="*" merger="true">
+    <dubbo:method name="getMenuItems" merger="false" />
+</dubbo:service>
+或：(指定合并策略，缺省根据返回值类型自动匹配，如果同一类型有两个合并器时，需指定合并器的名称)
+参见：[合并结果扩展]
+
+<dubbo:reference interface="com.xxx.MenuService" group="*">
+    <dubbo:method name="getMenuItems" merger="mymerge" />
+</dubbo:service>
+或：(指定合并方法，将调用返回结果的指定方法进行合并，合并方法的参数类型必须是返回结果类型本身)
+
+<dubbo:reference interface="com.xxx.MenuService" group="*">
+    <dubbo:method name="getMenuItems" merger=".addAll" />
+</dubbo:service>
+参数验证
+(+) (#)
+
+	参数验证功能是基于JSR303实现的，用户只需标识JSR303标准的验证Annotation，并通过声明filter来实现验证。
+	2.1.0以上版本支持
+完整示例代码参见：https://github.com/alibaba/dubbo/tree/master/dubbo-test/dubbo-test-examples/src/main/java/com/alibaba/dubbo/examples/validation
+
+验证方式可扩展，参见：Validation扩展点
+
+参数标注示例：
+
+import java.io.Serializable;
+import java.util.Date;
+ 
+import javax.validation.constraints.Future;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Past;
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
+ 
+public class ValidationParameter implements Serializable {
+     
+    private static final long serialVersionUID = 7158911668568000392L;
+ 
+    @NotNull // 不允许为空
+    @Size(min = 1, max = 20) // 长度或大小范围
+    private String name;
+ 
+    @NotNull(groups = ValidationService.Save.class) // 保存时不允许为空，更新时允许为空 ，表示不更新该字段
+    @Pattern(regexp = "^\\s*\\w+(?:\\.{0,1}[\\w-]+)*@[a-zA-Z0-9]+(?:[-.][a-zA-Z0-9]+)*\\.[a-zA-Z]+\\s*$")
+    private String email;
+ 
+    @Min(18) // 最小值
+    @Max(100) // 最大值
+    private int age;
+ 
+    @Past // 必须为一个过去的时间
+    private Date loginDate;
+ 
+    @Future // 必须为一个未来的时间
+    private Date expiryDate;
+ 
+    public String getName() {
+        return name;
+    }
+ 
+    public void setName(String name) {
+        this.name = name;
+    }
+ 
+    public String getEmail() {
+        return email;
+    }
+ 
+    public void setEmail(String email) {
+        this.email = email;
+    }
+ 
+    public int getAge() {
+        return age;
+    }
+ 
+    public void setAge(int age) {
+        this.age = age;
+    }
+ 
+    public Date getLoginDate() {
+        return loginDate;
+    }
+ 
+    public void setLoginDate(Date loginDate) {
+        this.loginDate = loginDate;
+    }
+ 
+    public Date getExpiryDate() {
+        return expiryDate;
+    }
+ 
+    public void setExpiryDate(Date expiryDate) {
+        this.expiryDate = expiryDate;
+    }
+ 
+}
+分组验证示例：
+
+public interface ValidationService { // 缺省可按服务接口区分验证场景，如：@NotNull(groups = ValidationService.class)
+     
+    @interface Save{} // 与方法同名接口，首字母大写，用于区分验证场景，如：@NotNull(groups = ValidationService.Save.class)，可选
+    void save(ValidationParameter parameter);
+ 
+    void update(ValidationParameter parameter);
+ 
+}
+关联验证示例：
+
+import javax.validation.GroupSequence;
+ 
+public interface ValidationService {
+     
+    @GroupSequence(Update.class) // 同时验证Update组规则
+    @interface Save{}
+    void save(ValidationParameter parameter);
+ 
+    @interface Update{} 
+    void update(ValidationParameter parameter);
+ 
+}
+参数验证示例：
+
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotNull;
+ 
+public interface ValidationService {
+ 
+    void save(@NotNull ValidationParameter parameter); // 验证参数不为空
+ 
+    void delete(@Min(1) int id); // 直接对基本类型参数验证
+ 
+}
+在客户端验证参数：
+
+<dubbo:reference id="validationService" interface="com.alibaba.dubbo.examples.validation.api.ValidationService" validation="true" />
+在服务器端验证参数：
+
+<dubbo:service interface="com.alibaba.dubbo.examples.validation.api.ValidationService" ref="validationService" validation="true" />
+验证异常信息：
+
+import javax.validation.ConstraintViolationException;
+import javax.validation.ConstraintViolationException;
+ 
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+ 
+import com.alibaba.dubbo.examples.validation.api.ValidationParameter;
+import com.alibaba.dubbo.examples.validation.api.ValidationService;
+import com.alibaba.dubbo.rpc.RpcException;
+ 
+public class ValidationConsumer {
+     
+    public static void main(String[] args) throws Exception {
+        String config = ValidationConsumer.class.getPackage().getName().replace('.', '/') + "/validation-consumer.xml";
+        ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(config);
+        context.start();
+        ValidationService validationService = (ValidationService)context.getBean("validationService");
+        // Error
+        try {
+            parameter = new ValidationParameter();
+            validationService.save(parameter);
+            System.out.println("Validation ERROR");
+        } catch (RpcException e) { // 抛出的是RpcException
+            ConstraintViolationException ve = (ConstraintViolationException) e.getCause(); // 里面嵌了一个ConstraintViolationException
+            Set<ConstraintViolation<?>> violations = ve.getConstraintViolations(); // 可以拿到一个验证错误详细信息的集合
+            System.out.println(violations);
+        }
+    }
+ 
+}
+需要加入依赖：
+
+<dependency>
+    <groupId>javax.validation</groupId>
+    <artifactId>validation-api</artifactId>
+    <version>1.0.0.GA</version>
+</dependency>
+<dependency>
+    <groupId>org.hibernate</groupId>
+    <artifactId>hibernate-validator</artifactId>
+    <version>4.2.0.Final</version>
+</dependency>
+结果缓存
+(+) (#)
+
+	结果缓存，用于加速热门数据的访问速度，Dubbo提供声明式缓存，以减少用户加缓存的工作量。
+	2.1.0以上版本支持
+示例代码：https://github.com/alibaba/dubbo/tree/master/dubbo-test/dubbo-test-examples/src/main/java/com/alibaba/dubbo/examples/cache
+
+lru 基于最近最少使用原则删除多余缓存，保持最热的数据被缓存。
+threadlocal 当前线程缓存，比如一个页面渲染，用到很多portal，每个portal都要去查用户信息，通过线程缓存，可以减少这种多余访问。
+jcache 与JSR107集成，可以桥接各种缓存实现。
+缓存类型可扩展，参见：CacheFactory扩展点
+
+配置如：
+
+<dubbo:reference interface="com.foo.BarService" cache="lru" />
+或：
+
+<dubbo:reference interface="com.foo.BarService">
+    <dubbo:method name="findBar" cache="lru" />
+</dubbo:reference>
+泛化引用
+(+) (#)
+
+	泛接口调用方式主要用于客户端没有API接口及模型类元的情况，参数及返回值中的所有POJO均用Map表示，通常用于框架集成，比如：实现一个通用的服务测试框架，可通过GenericService调用所有服务实现。
+<dubbo:reference id="barService" interface="com.foo.BarService" generic="true" />
+GenericService barService = (GenericService) applicationContext.getBean("barService");
+Object result = barService.$invoke("sayHello", new String[] { "java.lang.String" }, new Object[] { "World" });
+import com.alibaba.dubbo.rpc.service.GenericService; 
+... 
+ 
+// 引用远程服务 
+ReferenceConfig<GenericService> reference = new ReferenceConfig<GenericService>(); // 该实例很重量，里面封装了所有与注册中心及服务提供方连接，请缓存
+reference.setInterface("com.xxx.XxxService"); // 弱类型接口名 
+reference.setVersion("1.0.0"); 
+reference.setGeneric(true); // 声明为泛化接口 
+ 
+GenericService genericService = reference.get(); // 用com.alibaba.dubbo.rpc.service.GenericService可以替代所有接口引用 
+ 
+// 基本类型以及Date,List,Map等不需要转换，直接调用 
+Object result = genericService.$invoke("sayHello", new String[] {"java.lang.String"}, new Object[] {"world"}); 
+ 
+// 用Map表示POJO参数，如果返回值为POJO也将自动转成Map 
+Map<String, Object> person = new HashMap<String, Object>(); 
+person.put("name", "xxx"); 
+person.put("password", "yyy"); 
+Object result = genericService.$invoke("findPerson", new String[]{"com.xxx.Person"}, new Object[]{person}); // 如果返回POJO将自动转成Map 
+ 
+...
+假设存在POJO如：
+
+package com.xxx; 
+public class PersonImpl implements Person { 
+private String name; 
+private String password; 
+public String getName() { 
+return name; 
+} 
+public void setName(String name) { 
+this.name = name; 
+} 
+public String getPassword() { 
+return password; 
+} 
+public void setPassword(String password) { 
+this.password= password; 
+} 
+}
+则POJO数据：
+
+Person person = new PersonImpl(); 
+person.setName("xxx"); 
+person.setPassword("yyy");
+可用下面Map表示：
+
+Map<String, Object> map = new HashMap<String, Object>(); 
+map.put("class", "com.xxx.PersonImpl"); // 注意：如果参数类型是接口，或者List等丢失泛型，可通过class属性指定类型。
+map.put("name", "xxx"); 
+map.put("password", "yyy");
+泛化实现
+(+) (#)
+
+	泛接口实现方式主要用于服务器端没有API接口及模型类元的情况，参数及返回值中的所有POJO均用Map表示，通常用于框架集成，比如：实现一个通用的远程服务Mock框架，可通过实现GenericService接口处理所有服务请求。
+<bean id="genericService" class="com.foo.MyGenericService" />
+<dubbo:service interface="com.foo.BarService" ref="genericService" />
+package com.foo;
+public class MyGenericService implements GenericService {
+ 
+    public Object $invoke(String methodName, String[] parameterTypes, Object[] args) throws GenericException {
+        if ("sayHello".equals(methodName)) {
+            return "Welcome " + args[0];
+        }
+    }
+ 
+}
+... 
+GenericService xxxService = new XxxGenericService(); // 用com.alibaba.dubbo.rpc.service.GenericService可以替代所有接口实现 
+ 
+ServiceConfig<GenericService> service = new ServiceConfig<GenericService>(); // 该实例很重量，里面封装了所有与注册中心及服务提供方连接，请缓存
+service.setInterface("com.xxx.XxxService"); // 弱类型接口名 
+service.setVersion("1.0.0"); 
+service.setRef(xxxService); // 指向一个通用服务实现 
+ 
+// 暴露及注册服务 
+service.export();
+回声测试
+(+) (#)
+
+	回声测试用于检测服务是否可用，回声测试按照正常请求流程执行，能够测试整个调用是否通畅，可用于监控。
+	所有服务自动实现EchoService接口，只需将任意服务引用强制转型为EchoService，即可使用。
+<dubbo:reference id="memberService" interface="com.xxx.MemberService" />
+MemberService memberService = ctx.getBean("memberService"); // 远程服务引用
+ 
+EchoService echoService = (EchoService) memberService; // 强制转型为EchoService
+ 
+String status = echoService.$echo("OK"); // 回声测试可用性
+ 
+assert(status.equals("OK"))
+上下文信息
+(+) (#)
+
+	上下文中存放的是当前调用过程中所需的环境信息。
+	所有配置信息都将转换为URL的参数，参见《配置项一览表》中的“对应URL参数”一列。
+	注意
+RpcContext是一个ThreadLocal的临时状态记录器，当接收到RPC请求，或发起RPC请求时，RpcContext的状态都会变化。
+比如：A调B，B再调C，则B机器上，在B调C之前，RpcContext记录的是A调B的信息，在B调C之后，RpcContext记录的是B调C的信息。
+(1) 服务消费方
+xxxService.xxx(); // 远程调用
+boolean isConsumerSide = RpcContext.getContext().isConsumerSide(); // 本端是否为消费端，这里会返回true
+String serverIP = RpcContext.getContext().getRemoteHost(); // 获取最后一次调用的提供方IP地址
+String application = RpcContext.getContext().getUrl().getParameter("application"); // 获取当前服务配置信息，所有配置信息都将转换为URL的参数
+// ...
+yyyService.yyy(); // 注意：每发起RPC调用，上下文状态会变化
+// ...
+(2) 服务提供方
+public class XxxServiceImpl implements XxxService {
+ 
+    public void xxx() { // 服务方法实现
+        boolean isProviderSide = RpcContext.getContext().isProviderSide(); // 本端是否为提供端，这里会返回true
+        String clientIP = RpcContext.getContext().getRemoteHost(); // 获取调用方IP地址
+        String application = RpcContext.getContext().getUrl().getParameter("application"); // 获取当前服务配置信息，所有配置信息都将转换为URL的参数
+        // ...
+        yyyService.yyy(); // 注意：每发起RPC调用，上下文状态会变化
+        boolean isProviderSide = RpcContext.getContext().isProviderSide(); // 此时本端变成消费端，这里会返回false
+        // ...
+    }
+ 
+}
+隐式传参
+(+) (#)
+
+	注：path,group,version,dubbo,token,timeout几个key有特殊处理，请使用其它key值。
+
+
+(1) 服务消费方
+RpcContext.getContext().setAttachment("index", "1"); // 隐式传参，后面的远程调用都会隐式将这些参数发送到服务器端，类似cookie，用于框架集成，不建议常规业务使用
+xxxService.xxx(); // 远程调用
+// ...
+【注】 setAttachment设置的KV，在完成下面一次远程调用会被清空。即多次远程调用要多次设置。
+
+(2) 服务提供方
+public class XxxServiceImpl implements XxxService {
+ 
+    public void xxx() { // 服务方法实现
+        String index = RpcContext.getContext().getAttachment("index"); // 获取客户端隐式传入的参数，用于框架集成，不建议常规业务使用
+        // ...
+    }
+ 
+}
+异步调用
+(+) (#)
+
+	基于NIO的非阻塞实现并行调用，客户端不需要启动多线程即可完成并行调用多个远程服务，相对多线程开销较小。
+	2.0.6及其以上版本支持
+
+
+配置声明：
+
+consumer.xml
+<dubbo:reference id="fooService" interface="com.alibaba.foo.FooService">
+      <dubbo:method name="findFoo" async="true" />
+</dubbo:reference>
+<dubbo:reference id="barService" interface="com.alibaba.bar.BarService">
+      <dubbo:method name="findBar" async="true" />
+</dubbo:reference>
+调用代码：
+
+fooService.findFoo(fooId); // 此调用会立即返回null
+Future<Foo> fooFuture = RpcContext.getContext().getFuture(); // 拿到调用的Future引用，当结果返回后，会被通知和设置到此Future。
+ 
+barService.findBar(barId); // 此调用会立即返回null
+Future<Bar> barFuture = RpcContext.getContext().getFuture(); // 拿到调用的Future引用，当结果返回后，会被通知和设置到此Future。
+ 
+// 此时findFoo和findBar的请求同时在执行，客户端不需要启动多线程来支持并行，而是借助NIO的非阻塞完成。
+ 
+Foo foo = fooFuture.get(); // 如果foo已返回，直接拿到返回值，否则线程wait住，等待foo返回后，线程会被notify唤醒。
+Bar bar = barFuture.get(); // 同理等待bar返回。
+ 
+// 如果foo需要5秒返回，bar需要6秒返回，实际只需等6秒，即可获取到foo和bar，进行接下来的处理。
+你也可以设置是否等待消息发出：(异步总是不等待返回)
+
+sent="true" 等待消息发出，消息发送失败将抛出异常。
+sent="false" 不等待消息发出，将消息放入IO队列，即刻返回。
+<dubbo:method name="findFoo" async="true" sent="true" />
+如果你只是想异步，完全忽略返回值，可以配置return="false"，以减少Future对象的创建和管理成本：
+
+<dubbo:method name="findFoo" async="true" return="false" />
+本地调用
+(+) (#)
+
+	本地调用，使用了Injvm协议，是一个伪协议，它不开启端口，不发起远程调用，只在JVM内直接关联，但执行Dubbo的Filter链。
+Define injvm protocol:
+
+<dubbo:protocol name="injvm" />
+Set default protocol:
+
+<dubbo:provider protocol="injvm" />
+Set service protocol:
+
+<dubbo:service protocol="injvm" />
+Use injvm first:
+
+<dubbo:consumer injvm="true" .../>
+<dubbo:provider injvm="true" .../>
+或
+
+<dubbo:reference injvm="true" .../>
+<dubbo:service injvm="true" .../>
+	注意：服务暴露与服务引用都需要声明injvm="true"
+自动暴露、引用本地服务
+
+从 dubbo 2.2.0 开始，每个服务默认都会在本地暴露；在引用服务的时候，默认优先引用本地服务；如果希望引用远程服务可以使用一下配置强制引用远程服务。
+
+...
+    <dubbo:reference ... scope="remote" />
+...
+参数回调
+(+) (#)
+
+	参数回调方式与调用本地callback或listener相同，只需要在Spring的配置文件中声明哪个参数是callback类型即可，Dubbo将基于长连接生成反向代理，这样就可以从服务器端调用客户端逻辑。
+	2.0.6及其以上版本支持
+代码参见：https://github.com/alibaba/dubbo/tree/master/dubbo-test/dubbo-test-examples/src/main/java/com/alibaba/dubbo/examples/callback
+
+(1) 共享服务接口：
+
+服务接口示例：
+
+CallbackService.java
+package com.callback;
+ 
+public interface CallbackService {
+    void addListener(String key, CallbackListener listener);
+}
+CallbackListener.java
+package com.callback;
+ 
+public interface CallbackListener {
+    void changed(String msg);
+}
+(2) 服务提供者：
+
+服务提供者接口实现示例：
+
+CallbackServiceImpl.java
+package com.callback.impl;
+ 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+ 
+import com.callback.CallbackListener;
+import com.callback.CallbackService;
+ 
+public class CallbackServiceImpl implements CallbackService {
+     
+    private final Map<String, CallbackListener> listeners = new ConcurrentHashMap<String, CallbackListener>();
+  
+    public CallbackServiceImpl() {
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                while(true) {
+                    try {
+                        for(Map.Entry<String, CallbackListener> entry : listeners.entrySet()){
+                           try {
+                               entry.getValue().changed(getChanged(entry.getKey()));
+                           } catch (Throwable t) {
+                               listeners.remove(entry.getKey());
+                           }
+                        }
+                        Thread.sleep(5000); // 定时触发变更通知
+                    } catch (Throwable t) { // 防御容错
+                        t.printStackTrace();
+                    }
+                }
+            }
+        });
+        t.setDaemon(true);
+        t.start();
+    }
+  
+    public void addListener(String key, CallbackListener listener) {
+        listeners.put(key, listener);
+        listener.changed(getChanged(key)); // 发送变更通知
+    }
+     
+    private String getChanged(String key) {
+        return "Changed: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
+    }
+ 
+}
+服务提供者配置示例：
+
+<bean id="callbackService" class="com.callback.impl.CallbackServiceImpl" />
+<dubbo:service interface="com.callback.CallbackService" ref="callbackService" connections="1" callbacks="1000">
+    <dubbo:method name="addListener">
+        <dubbo:argument index="1" callback="true" />
+        <!--也可以通过指定类型的方式-->
+        <!--<dubbo:argument type="com.demo.CallbackListener" callback="true" />-->
+    </dubbo:method>
+</dubbo:service>
+(2) 服务消费者：
+
+服务消费者配置示例：
+
+consumer.xml
+<dubbo:reference id="callbackService" interface="com.callback.CallbackService" />
+服务消费者调用示例：
+
+CallbackServiceTest.java
+ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("classpath:consumer.xml");
+context.start();
+ 
+CallbackService callbackService = (CallbackService) context.getBean("callbackService");
+ 
+callbackService.addListener("http://10.20.160.198/wiki/display/dubbo/foo.bar", new CallbackListener(){
+    public void changed(String msg) {
+        System.out.println("callback1:" + msg);
+    }
+});
+事件通知
+(+) (#)
+
+	在调用之前，调用之后，出现异常时，会触发oninvoke, onreturn, onthrow三个事件，可以配置当事件发生时，通知哪个类的哪个方法。
+	支持版本：2.0.7之后
+(1) 服务提供者与消费者共享服务接口：
+
+IDemoService.java
+interface IDemoService {
+    public Person get(int id);
+}
+(2) 服务提供者实现：
+
+DemoServiceImpl.java
+class NormalDemoService implements IDemoService {
+    public Person get(int id) {
+        return new Person(id, "charles`son", 4);
+    }
+}
+(3) 服务提供者配置：
+
+provider.xml
+<dubbo:application name="rpc-callback-demo" />
+<dubbo:registry address="http://10.20.160.198/wiki/display/dubbo/10.20.153.186" />
+<bean id="demoService" class="com.alibaba.dubbo.callback.implicit.NormalDemoService" />
+<dubbo:service interface="com.alibaba.dubbo.callback.implicit.IDemoService" ref="demoService" version="1.0.0" group="cn"/>
+(4) 服务消费者Callback接口及实现：
+
+Nofify.java
+interface Nofify {
+    public void onreturn(Person msg, Integer id);
+    public void onthrow(Throwable ex, Integer id);
+}
+NofifyImpl.java
+class NofifyImpl implements Nofify {
+    public Map<Integer, Person>    ret    = new HashMap<Integer, Person>();
+    public Map<Integer, Throwable> errors = new HashMap<Integer, Throwable>();
+    public void onreturn(Person msg, Integer id) {
+        System.out.println("onreturn:" + msg);
+        ret.put(id, msg);
+    }
+    public void onthrow(Throwable ex, Integer id) {
+        errors.put(id, ex);
+    }
+}
+(5) 服务消费者Callback接口及实现：
+
+consumer.xml
+<bean id ="demoCallback" class = "com.alibaba.dubbo.callback.implicit.NofifyImpl" />
+<dubbo:reference id="demoService" interface="com.alibaba.dubbo.callback.implicit.IDemoService" version="1.0.0" group="cn" >
+      <dubbo:method name="get" async="true" onreturn = "demoCallback.onreturn" onthrow="demoCallback.onthrow" />
+</dubbo:reference>
+	注：
+callback与async功能正交分解：
+async=true，表示结果是否马上返回.
+onreturn 表示是否需要回调.
+组合情况：(async=false 默认)
+异步回调模式：async=true onreturn="xxx"
+同步回调模式：async=false onreturn="xxx"
+异步无回调 ：async=true
+同步无回调 ：async=false
+
+(6) TEST CASE：
+
+Test.java
+IDemoService demoService = (IDemoService) context.getBean("demoService");
+NofifyImpl notify = (NofifyImpl) context.getBean("demoCallback");
+int requestId = 2;
+Person ret = demoService.get(requestId);
+Assert.assertEquals(null, ret);
+//for Test：只是用来说明callback正常被调用，业务具体实现自行决定.
+for (int i = 0; i < 10; i++) {
+    if (!notify.ret.containsKey(requestId)) {
+        Thread.sleep(200);
+    } else {
+        break;
+    }
+}
+Assert.assertEquals(requestId, notify.ret.get(requestId).getId());
+本地存根
+(+) (#)
+
+	远程服务后，客户端通常只剩下接口，而实现全在服务器端，但提供方有些时候想在客户端也执行部分逻辑，比如：做ThreadLocal缓存，提前验证参数，调用失败后伪造容错数据等等，此时就需要在API中带上Stub，客户端生成Proxy实，会把Proxy通过构造函数传给Stub，然后把Stub暴露组给用户，Stub可以决定要不要去调Proxy。
+	Stub必须有可传入Proxy的构造函数。
+
+
+<dubbo:service interface="com.foo.BarService" stub="true" />
+Or:
+
+<dubbo:service interface="com.foo.BarService" stub="com.foo.BarServiceStub" />
+api.jar:
+
+com.foo.BarService
+com.foo.BarServiceStub // 在API旁边放一个Stub实现，它实现BarService接口，并有一个传入远程BarService实例的构造函数
+package com.foo
+public class BarServiceStub implements BarService {
+ 
+    private final BarService barService;
+ 
+    // 构造函数传入真正的远程代理对象
+    public (BarService barService) {
+        this.barService = barService;
+    }
+ 
+    public String sayHello(String name) {
+        // 此代码在客户端执行
+        // 你可以在客户端做ThreadLocal本地缓存，或预先验证参数是否合法，等等
+        try {
+            return barService.sayHello(name);
+        } catch (Exception e) {
+            // 你可以容错，可以做任何AOP拦截事项
+            return "容错数据";
+        }
+    }
+}
+本地伪装
+(+) (#)
+
+	Mock通常用于服务降级，比如某验权服务，当服务提供方全部挂掉后，客户端不抛出异常，而是通过Mock数据返回授权失败。
+	Mock是Stub的一个子集，便于服务提供方在客户端执行容错逻辑，因经常需要在出现RpcException(比如网络失败，超时等)时进行容错，而在出现业务异常(比如登录用户名密码错误)时不需要容错，如果用Stub，可能就需要捕获并依赖RpcException类，而用Mock就可以不依赖RpcException，因为它的约定就是只有出现RpcException时才执行。
+<dubbo:service interface="com.foo.BarService" mock="true" />
+Or:
+
+<dubbo:service interface="com.foo.BarService" mock="com.foo.BarServiceMock" />
+api.jar:
+
+com.foo.BarService
+com.foo.BarServiceMock // 在API旁边放一个Mock实现，它实现BarService接口，并有一个无参构造函数
+package com.foo
+public class BarServiceMock implements BarService {
+ 
+    public String sayHello(String name) {
+        // 你可以伪造容错数据，此方法只在出现RpcException时被执行
+        return "容错数据";
+    }
+}
+如果服务的消费方经常需要try-catch捕获异常，如：
+
+Offer offer = null;
+try {
+    offer = offerService.findOffer(offerId);
+} catch (RpcException e) {
+   logger.error(e);
+}
+请考虑改为Mock实现，并在Mock中return null。
+
+如果只是想简单的忽略异常，在2.0.11以上版本可用：
+
+<dubbo:service interface="com.foo.BarService" mock="return null" />
+延迟暴露
+(+) (#)
+
+	如果你的服务需要Warmup时间，比如初始化缓存，等待相关资源就位等，可以使用delay进行延迟暴露。
+延迟5秒暴露服务：
+
+<dubbo:service delay="5000" />
+延迟到Spring初始化完成后，再暴露服务：(基于Spring的ContextRefreshedEvent事件触发暴露)
+
+<dubbo:service delay="-1" />
+	Spring2.x初始化死锁问题
+在Spring解析到<dubbo:service />时，就已经向外暴露了服务，而Spring还在接着初始化其它Bean。
+如果这时有请求进来，并且服务的实现类里有调用applicationContext.getBean()的用法。
+1. 请求线程的applicationContext.getBean()调用，先同步singletonObjects判断Bean是否存在，不存在就同步beanDefinitionMap进行初始化，并再次同步singletonObjects写入Bean实例缓存。
+
+2. 而Spring初始化线程，因不需要判断Bean的存在，直接同步beanDefinitionMap进行初始化，并同步singletonObjects写入Bean实例缓存。
+
+
+这样就导致getBean线程，先锁singletonObjects，再锁beanDefinitionMap，再次锁singletonObjects。
+而Spring初始化线程，先锁beanDefinitionMap，再锁singletonObjects。
+反向锁导致线程死锁，不能提供服务，启动不了。
+
+	规避办法
+1. 强烈建议不要在服务的实现类中有applicationContext.getBean()的调用，全部采用IoC注入的方式使用Spring的Bean。
+2. 如果实在要调getBean()，可以将Dubbo的配置放在Spring的最后加载。
+3. 如果不想依赖配置顺序，可以使用<dubbo:provider deplay=”-1” />，使Dubbo在Spring容器初始化完后，再暴露服务。
+4. 如果大量使用getBean()，相当于已经把Spring退化为工厂模式在用，可以将Dubbo的服务隔离单独的Spring容器。
+并发控制
+(+) (#)
+
+限制com.foo.BarService的每个方法，服务器端并发执行（或占用线程池线程数）不能超过10个：
+
+<dubbo:service interface="com.foo.BarService" executes="10" />
+限制com.foo.BarService的sayHello方法，服务器端并发执行（或占用线程池线程数）不能超过10个：
+
+<dubbo:service interface="com.foo.BarService">
+    <dubbo:method name="sayHello" executes="10" />
+</dubbo:service>
+限制com.foo.BarService的每个方法，每客户端并发执行（或占用连接的请求数）不能超过10个：
+
+<dubbo:service interface="com.foo.BarService" actives="10" />
+Or:
+
+<dubbo:reference interface="com.foo.BarService" actives="10" />
+限制com.foo.BarService的sayHello方法，每客户端并发执行（或占用连接的请求数）不能超过10个：
+
+<dubbo:service interface="com.foo.BarService">
+    <dubbo:method name="sayHello" actives="10" />
+</dubbo:service>
+Or:
+
+<dubbo:reference interface="com.foo.BarService">
+    <dubbo:method name="sayHello" actives="10" />
+</dubbo:service>
+如果<dubbo:service>和<dubbo:reference>都配了actives，<dubbo:reference>优先，参见：配置的覆盖策略。
+
+Load Balance均衡：
+
+配置服务的客户端的loadbalance属性为leastactive，此Loadbalance会调用并发数最小的Provider（Consumer端并发数）。
+
+<dubbo:reference interface="com.foo.BarService" loadbalance="leastactive" />
+Or:
+
+<dubbo:service interface="com.foo.BarService" loadbalance="leastactive" />
+连接控制
+(+) (#)
+
+限制服务器端接受的连接不能超过10个：（以连接在Server上，所以配置在Provider上）
+
+<dubbo:provider protocol="dubbo" accepts="10" />
+<dubbo:protocol name="dubbo" accepts="10" />
+限制客户端服务使用连接连接数：(如果是长连接，比如Dubbo协议，connections表示该服务对每个提供者建立的长连接数)
+
+<dubbo:reference interface="com.foo.BarService" connections="10" />
+Or:
+
+<dubbo:service interface="com.foo.BarService" connections="10" />
+如果<dubbo:service>和<dubbo:reference>都配了connections，<dubbo:reference>优先，参见：配置的覆盖策略。
+
+延迟连接
+(+) (#)
+
+	延迟连接，用于减少长连接数，当有调用发起时，再创建长连接。
+	只对使用长连接的dubbo协议生效。
+<dubbo:protocol name="dubbo" lazy="true" />
+粘滞连接
+(+) (#)
+
+	粘滞连接用于有状态服务，尽可能让客户端总是向同一提供者发起调用，除非该提供者挂了，再连另一台。
+	粘滞连接将自动开启延迟连接，以减少长连接数，参见：延迟连接 (+)
+<dubbo:protocol name="dubbo" sticky="true" />
+令牌验证
+(+) (#)
+
+
+
+防止消费者绕过注册中心访问提供者
+在注册中心控制权限，以决定要不要下发令牌给消费者
+注册中心可灵活改变授权方式，而不需修改或升级提供者
+可以全局设置开启令牌验证：
+
+<!--随机token令牌，使用UUID生成-->
+<dubbo:provider interface="com.foo.BarService" token="true" />
+<!--固定token令牌，相当于密码-->
+<dubbo:provider interface="com.foo.BarService" token="123456" />
+也可在服务级别设置：
+
+<!--随机token令牌，使用UUID生成-->
+<dubbo:service interface="com.foo.BarService" token="true" />
+<!--固定token令牌，相当于密码-->
+<dubbo:service interface="com.foo.BarService" token="123456" />
+还可在协议级别设置：
+
+<!--随机token令牌，使用UUID生成-->
+<dubbo:protocol name="dubbo" token="true" />
+<!--固定token令牌，相当于密码-->
+<dubbo:protocol name="dubbo" token="123456" />
+路由规则
+(+) (#)
+
+	2.2.0以上版本支持
+	路由规则扩展点：路由扩展
+向注册中心写入路由规则：(通常由监控中心或治理中心的页面完成)
+
+RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
+Registry registry = registryFactory.getRegistry(URL.valueOf("zookeeper://10.20.153.10:2181"));
+registry.register(URL.valueOf("condition://0.0.0.0/com.foo.BarService?category=routers&dynamic=false&rule=" + URL.encode("http://10.20.160.198/wiki/display/dubbo/host = 10.20.153.10 => host = 10.20.153.11") + "));
+其中：
+
+condition://
+表示路由规则的类型，支持条件路由规则和脚本路由规则，可扩展，必填。
+0.0.0.0
+表示对所有IP地址生效，如果只想对某个IP的生效，请填入具体IP，必填。
+com.foo.BarService
+表示只对指定服务生效，必填。
+category=routers
+表示该数据为动态配置类型，必填。
+dynamic=false
+表示该数据为持久数据，当注册方退出时，数据依然保存在注册中心，必填。
+enabled=true
+覆盖规则是否生效，可不填，缺省生效。
+force=false
+当路由结果为空时，是否强制执行，如果不强制执行，路由结果为空的路由规则将自动失效，可不填，缺省为flase。
+runtime=false
+是否在每次调用时执行路由规则，否则只在提供者地址列表变更时预先执行并缓存结果，调用时直接从缓存中获取路由结果。
+如果用了参数路由，必须设为true，需要注意设置会影响调用的性能，可不填，缺省为flase。
+priority=1
+路由规则的优先级，用于排序，优先级越大越靠前执行，可不填，缺省为0。
+rule=URL.encode("host = 10.20.153.10 => host = 10.20.153.11")
+表示路由规则的内容，必填。
+条件路由规则
+(#)
+
+基于条件表达式的路由规则，如：
+
+host = 10.20.153.10 => host = 10.20.153.11
+规则：
+
+"=>"之前的为消费者匹配条件，所有参数和消费者的URL进行对比，当消费者满足匹配条件时，对该消费者执行后面的过滤规则。
+"=>"之后为提供者地址列表的过滤条件，所有参数和提供者的URL进行对比，消费者最终只拿到过滤后的地址列表。
+如果匹配条件为空，表示对所有消费方应用，如：=> host != 10.20.153.11
+如果过滤条件为空，表示禁止访问，如：host = 10.20.153.10 =>
+表达式：
+
+参数支持：
+服务调用信息，如：method, argument 等 (暂不支持参数路由)
+URL本身的字段，如：protocol, host, port 等
+以及URL上的所有参数，如：application, organization 等
+条件支持：
+等号"="表示"匹配"，如：host = 10.20.153.10
+不等号"!="表示"不匹配"，如：host != 10.20.153.10
+值支持：
+以逗号","分隔多个值，如：host != 10.20.153.10,10.20.153.11
+以星号"*"结尾，表示通配，如：host != 10.20.*
+以美元符"$"开头，表示引用消费者参数，如：host = $host
+示例：
+
+1. 排除预发布机：
+
+=> host != 172.22.3.91
+2. 白名单：(注意：一个服务只能有一条白名单规则，否则两条规则交叉，就都被筛选掉了)
+
+host != 10.20.153.10,10.20.153.11 =>
+3. 黑名单：
+
+host = 10.20.153.10,10.20.153.11 =>
+4. 服务寄宿在应用上，只暴露一部分的机器，防止整个集群挂掉：
+
+=> host = 172.22.3.1*,172.22.3.2*
+5. 为重要应用提供额外的机器：
+
+application != kylin => host != 172.22.3.95,172.22.3.96
+6. 读写分离：
+
+method = find*,list*,get*,is* => host = 172.22.3.94,172.22.3.95,172.22.3.96
+method != find*,list*,get*,is* => host = 172.22.3.97,172.22.3.98
+7. 前后台分离：
+
+application = bops => host = 172.22.3.91,172.22.3.92,172.22.3.93
+application != bops => host = 172.22.3.94,172.22.3.95,172.22.3.96
+8. 隔离不同机房网段：
+
+host != 172.22.3.* => host != 172.22.3.*
+9. 提供者与消费者部署在同集群内，本机只访问本机的服务：
+
+=> host = $host
+脚本路由规则
+(#)
+
+	支持JDK脚本引擎的所有脚本，比如：javascript,jruby,groovy等，通过type=javascript参数设置脚本类型，缺省为javascript。
+	脚本没有沙箱约束，可执行任意代码，存在后门风险
+"script://0.0.0.0/com.foo.BarService?category=routers&dynamic=false&rule=" + URL.encode("function route(invokers) { ... } (invokers)")
+基于脚本引擎的路由规则，如：
+
+function route(invokers) {
+    var result = new java.util.ArrayList(invokers.size());
+    for (i = 0; i < invokers.size(); i ++) {
+        if ("http://10.20.160.198/wiki/display/dubbo/10.20.153.10".equals(invokers.get(i).getUrl().getHost())) {
+            result.add(invokers.get(i));
+        }
+    }
+    return result;
+} (invokers); // 表示立即执行方法
+配置规则
+(+) (#)
+
+	2.2.0以上版本支持
+向注册中心写入动态配置覆盖规则：(通常由监控中心或治理中心的页面完成)
+
+RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
+Registry registry = registryFactory.getRegistry(URL.valueOf("zookeeper://10.20.153.10:2181"));
+registry.register(URL.valueOf("override://0.0.0.0/com.foo.BarService?category=configurators&dynamic=false&application=foo&timeout=1000"));
+其中：
+
+override://
+表示数据采用覆盖方式，支持override和absent，可扩展，必填。
+0.0.0.0
+表示对所有IP地址生效，如果只想覆盖某个IP的数据，请填入具体IP，必填。
+com.foo.BarService
+表示只对指定服务生效，必填。
+category=configurators
+表示该数据为动态配置类型，必填。
+dynamic=false
+表示该数据为持久数据，当注册方退出时，数据依然保存在注册中心，必填。
+enabled=true
+覆盖规则是否生效，可不填，缺省生效。
+application=foo
+表示只对指定应用生效，可不填，表示对所有应用生效。
+timeout=1000
+表示将满足以上条件的timeout参数的值覆盖为1000。
+如果想覆盖其它参数，直接加在override的URL参数上。
+示例：
+
+1. 禁用提供者：(通常用于临时踢除某台提供者机器，相似的，禁止消费者访问请使用路由规则)
+
+override://10.20.153.10/com.foo.BarService?category=configurators&dynamic=false&disbaled=true
+2. 调整权重：(通常用于容量评估，缺省权重为100)
+
+override://10.20.153.10/com.foo.BarService?category=configurators&dynamic=false&weight=200
+3. 调整负载均衡策略：(缺省负载均衡策略为random)
+
+override://10.20.153.10/com.foo.BarService?category=configurators&dynamic=false&loadbalance=leastactive
+4. 服务降级：(通常用于临时屏蔽某个出错的非关键服务)
+
+override://0.0.0.0/com.foo.BarService?category=configurators&dynamic=false&application=foo&mock=force:return+null
+服务降级
+(+) (#)
+
+	2.2.0以上版本支持
+	参见：配置规则
+向注册中心写入动态配置覆盖规则：(通过由监控中心或治理中心的页面完成)
+
+RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
+Registry registry = registryFactory.getRegistry(URL.valueOf("zookeeper://10.20.153.10:2181"));
+registry.register(URL.valueOf("override://0.0.0.0/com.foo.BarService?category=configurators&dynamic=false&application=foo&mock=force:return+null"));
+其中：
+
+mock=force:return+null
+表示消费方对该服务的方法调用都直接返回null值，不发起远程调用。
+屏蔽不重要服务不可用时对调用方的影响。
+还可以改为：
+
+mock=fail:return+null
+表示消费方对该服务的方法调用在失败后，再返回null值，不抛异常。
+容忍不重要服务不稳定时对调用方的影响。
+优雅停机
+(+) (#)
+
+	Dubbo是通过JDK的ShutdownHook来完成优雅停机的，所以如果用户使用"kill -9 PID"等强制关闭指令，是不会执行优雅停机的，只有通过"kill PID"时，才会执行。
+原理：
+
+服务提供方
+停止时，先标记为不接收新请求，新请求过来时直接报错，让客户端重试其它机器。
+然后，检测线程池中的线程是否正在运行，如果有，等待所有线程执行完成，除非超时，则强制关闭。
+服务消费方
+停止时，不再发起新的调用请求，所有新的调用在客户端即报错。
+然后，检测有没有请求的响应还没有返回，等待响应返回，除非超时，则强制关闭。
+设置优雅停机超时时间，缺省超时时间是10秒：(超时则强制关闭)
+
+<dubbo:application ...>
+    <dubbo:parameter key="shutdown.timeout" value="60000" /> <!-- 单位毫秒 -->
+</dubbo:application>
+如果ShutdownHook不能生效，可以自行调用：
+
+ProtocolConfig.destroyAll();
+主机绑定
+(+) (#)
+
+缺省主机IP查找顺序：
+
+通过LocalHost.getLocalHost()获取本机地址。
+如果是127.*等loopback地址，则扫描各网卡，获取网卡IP。
+注册的地址如果获取不正确，比如需要注册公网地址，可以：
+1. 可以在/etc/hosts中加入：机器名 公网IP，比如：
+
+test1 205.182.23.201
+2. 在dubbo.xml中加入主机地址的配置：
+
+<dubbo:protocol host="http://10.20.160.198/wiki/display/dubbo/205.182.23.201">
+3. 或在dubbo.properties中加入主机地址的配置：
+
+dubbo.protocol.host=205.182.23.201
+缺省主机端口与协议相关：
+
+dubbo: 20880
+rmi: 1099
+http: 80
+hessian: 80
+webservice: 80
+memcached: 11211
+redis: 6379
+主机端口配置：
+
+1. 在dubbo.xml中加入主机地址的配置：
+
+<dubbo:protocol name="dubbo" port="20880">
+3. 或在dubbo.properties中加入主机地址的配置：
+
+dubbo.protocol.dubbo.port=20880
+日志适配
+(+) (#)
+
+	2.2.1以上版本支持
+	扩展点：日志适配扩展
+缺省自动查找：
+
+log4j
+slf4j
+jcl
+jdk
+可以通过以下方式配置日志输出策略：
+
+java -Ddubbo.application.logger=log4j
+dubbo.properties
+dubbo.application.logger=log4j
+dubbo.xml
+<dubbo:application logger="log4j" />
+访问日志
+(+) (#)
+
+	如果你想记录每一次请求信息，可开启访问日志，类似于apache的访问日志。
+	此日志量比较大，请注意磁盘容量。
+将访问日志输出到当前应用的log4j日志：
+
+<dubbo:protocol accesslog="true" />
+将访问日志输出到指定文件：
+
+<dubbo:protocol accesslog="http://10.20.160.198/wiki/display/dubbo/foo/bar.log" />
+服务容器
+(+) (#)
+
+	服务容器是一个standalone的启动程序，因为后台服务不需要Tomcat或JBoss等Web容器的功能，如果硬要用Web容器去加载服务提供方，增加复杂性，也浪费资源。
+	服务容器只是一个简单的Main方法，并加载一个简单的Spring容器，用于暴露服务。
+	服务容器的加载内容可以扩展，内置了spring, jetty, log4j等加载，可通过Container扩展点进行扩展，参见：Container
+Spring Container
+自动加载META-INF/spring目录下的所有Spring配置。
+配置：(配在java命令-D参数或者dubbo.properties中)
+dubbo.spring.config=classpath*:META-INF/spring/*.xml ----配置spring配置加载位置
+Jetty Container
+启动一个内嵌Jetty，用于汇报状态。
+配置：(配在java命令-D参数或者dubbo.properties中)
+dubbo.jetty.port=8080 ----配置jetty启动端口
+dubbo.jetty.directory=/foo/bar ----配置可通过jetty直接访问的目录，用于存放静态文件
+dubbo.jetty.page=log,status,system ----配置显示的页面，缺省加载所有页面
+Log4j Container
+自动配置log4j的配置，在多进程启动时，自动给日志文件按进程分目录。
+配置：(配在java命令-D参数或者dubbo.properties中)
+dubbo.log4j.file=/foo/bar.log ----配置日志文件路径
+dubbo.log4j.level=WARN ----配置日志级别
+dubbo.log4j.subdirectory=20880 ----配置日志子目录，用于多进程启动，避免冲突
+容器启动
+
+如：(缺省只加载spring)
+
+java com.alibaba.dubbo.container.Main
+或：(通过main函数参数传入要加载的容器)
+
+java com.alibaba.dubbo.container.Main spring jetty log4j
+或：(通过JVM启动参数传入要加载的容器)
+
+java com.alibaba.dubbo.container.Main -Ddubbo.container=spring,jetty,log4j
+或：(通过classpath下的dubbo.properties配置传入要加载的容器)
+
+dubbo.properties
+dubbo.container=spring,jetty,log4j
+Reference Config缓存
+(+) (#)
+
+ReferenceConfig实例很重，封装了与注册中心的连接以及与提供者的连接，需要缓存，否则重复生成ReferenceConfig可能造成性能问题并且会有内存和连接泄漏。API方式编程时，容易忽略此问题。
+
+Dubbo 2.4.0+版本，提供了简单的工具类ReferenceConfigCache用于缓存ReferenceConfig实例。
+
+使用方式如下：
+
+ReferenceConfig<XxxService> reference = new ReferenceConfig<XxxService>();
+reference.setInterface(XxxService.class);
+reference.setVersion("1.0.0");
+......
+ 
+ 
+ReferenceConfigCache cache = ReferenceConfigCache.getCache();
+XxxService xxxService = cache.get(reference); // cache.get方法中会Cache Reference对象，并且调用ReferenceConfig.get方法启动ReferenceConfig
+// 注意！ Cache会持有ReferenceConfig，不要在外部再调用ReferenceConfig的destroy方法，导致Cache内的ReferenceConfig失效！
+ 
+// 使用xxxService对象
+xxxService.sayHello();
+消除Cache中的ReferenceConfig，销毁ReferenceConfig并释放对应的资源。
+
+ReferenceConfigCache cache = ReferenceConfigCache.getCache();
+cache.destroy(reference);
+缺省ReferenceConfigCache把相同服务Group、接口、版本的ReferenceConfig认为是相同，缓存一份。即以服务Group、接口、版本为缓存的Key。
+
+可以修改这个策略，在ReferenceConfigCache.getCache时，传一个KeyGenerator。详见ReferenceConfigCache类的方法。
+
+KeyGenerator keyGenerator = new ...
+ 
+ReferenceConfigCache cache = ReferenceConfigCache.getCache(keyGenerator );
+分布式事务
+(+) (#)
+
+	基于JTA/XA规范实现。
+	暂未实现。
+两阶段提交：
+
+
+
+API参考手册
+(+) (#)
+
+	Dubbo的常规功能，都保持零侵入，但有些功能不得不用API侵入才能实现。
+	Dubbo中除这里声明以外的接口或类，都是内部接口或扩展接口，普通用户请不要直接依赖，否则升级版本可能出现不兼容。
+API汇总如下：
+
+配置API
+com.alibaba.dubbo.config.ServiceConfig
+com.alibaba.dubbo.config.ReferenceConfig
+com.alibaba.dubbo.config.ProtocolConfig
+com.alibaba.dubbo.config.RegistryConfig
+com.alibaba.dubbo.config.MonitorConfig
+com.alibaba.dubbo.config.ApplicationConfig
+com.alibaba.dubbo.config.ModuleConfig
+com.alibaba.dubbo.config.ProviderConfig
+com.alibaba.dubbo.config.ConsumerConfig
+com.alibaba.dubbo.config.MethodConfig
+com.alibaba.dubbo.config.ArgumentConfig
+参见：API配置
+注解API
+com.alibaba.dubbo.config.annotation.Service
+com.alibaba.dubbo.config.annotation.Reference
+参见：注解配置
+模型API
+com.alibaba.dubbo.common.URL
+com.alibaba.dubbo.rpc.RpcException
+上下文API
+com.alibaba.dubbo.rpc.RpcContext
+参见：上下文信息 & 对方地址 & 隐式传参 & 异步调用
+服务API
+com.alibaba.dubbo.rpc.service.GenericService
+com.alibaba.dubbo.rpc.service.GenericException
+参见：泛化引用 & 泛化实现
+com.alibaba.dubbo.rpc.service.EchoService
+参见：回声测试
+配置参考手册
+(+) (#)
+
+	这里以Xml配置为准，列举所有配置项，其它配置方式，请参见相应转换关系：属性配置，注解配置，API配置
+注意：只有group，interface，version是服务的匹配条件，三者决定是不是同一个服务，其它配置项均为调优和治理参数。
+
+所有配置项分为三大类，参见下表中的"作用"一列。
+
+服务发现：表示该配置项用于服务的注册与发现，目的是让消费方找到提供方。
+服务治理：表示该配置项用于治理服务间的关系，或为开发测试提供便利条件。
+性能调优：表示该配置项用于调优性能，不同的选项对性能会产生影响。
+所有配置最终都将转换为URL表示，并由服务提供方生成，经注册中心传递给消费方，各属性对应URL的参数，参见配置项一览表中的"对应URL参数"列。
+URL格式：
+
+protocol://username:password@host:port/path?key=value&key=value
+
+Schema: http://code.alibabatech.com/schema/dubbo/dubbo.xsd
+
+<dubbo:service/>
+(+) (#)
+
+服务提供者暴露服务配置：
+配置类：com.alibaba.dubbo.config.ServiceConfig
+
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:service>	interface	 	class	必填	 	服务发现	服务接口名	1.0.0以上版本
+<dubbo:service>	ref	 	object	必填	 	服务发现	服务对象实现引用	1.0.0以上版本
+<dubbo:service>	version	version	string	可选	0.0.0	服务发现	服务版本，建议使用两位数字版本，如：1.0，通常在接口不兼容时版本号才需要升级	1.0.0以上版本
+<dubbo:service>	group	group	string	可选	 	服务发现	服务分组，当一个接口有多个实现，可以用分组区分	1.0.7以上版本
+<dubbo:service>	path	<path>	string	可选	缺省为接口名	服务发现	服务路径 (注意：1.0不支持自定义路径，总是使用接口名，如果有1.0调2.0，配置服务路径可能不兼容)	1.0.12以上版本
+<dubbo:service>	delay	delay	int	可选	0	性能调优	延迟注册服务时间(毫秒) ，设为-1时，表示延迟到Spring容器初始化完成时暴露服务	1.0.14以上版本
+<dubbo:service>	timeout	timeout	int	可选	1000	性能调优	远程服务调用超时时间(毫秒)	2.0.0以上版本
+<dubbo:service>	retries	retries	int	可选	2	性能调优	远程服务调用重试次数，不包括第一次调用，不需要重试请设为0	2.0.0以上版本
+<dubbo:service>	connections	connections	int	可选	100	性能调优	对每个提供者的最大连接数，rmi、http、hessian等短连接协议表示限制连接数，dubbo等长连接协表示建立的长连接个数	2.0.0以上版本
+<dubbo:service>	loadbalance	loadbalance	string	可选	random	性能调优	负载均衡策略，可选值：random,roundrobin,leastactive，分别表示：随机，轮循，最少活跃调用	2.0.0以上版本
+<dubbo:service>	async	async	boolean	可选	false	性能调优	是否缺省异步执行，不可靠异步，只是忽略返回值，不阻塞执行线程	2.0.0以上版本
+<dubbo:service>	stub	stub	class/boolean	可选	false	服务治理	设为true，表示使用缺省代理类名，即：接口名 + Local后缀，服务接口客户端本地代理类名，用于在客户端执行本地逻辑，如本地缓存等，该本地代理类的构造函数必须允许传入远程代理对象，构造函数如：public XxxServiceLocal(XxxService xxxService)	2.0.0以上版本
+<dubbo:service>	mock	mock	class/boolean	可选	false	服务治理	设为true，表示使用缺省Mock类名，即：接口名 + Mock后缀，服务接口调用失败Mock实现类，该Mock类必须有一个无参构造函数，与Local的区别在于，Local总是被执行，而Mock只在出现非业务异常(比如超时，网络异常等)时执行，Local在远程调用之前执行，Mock在远程调用后执行。	2.0.0以上版本
+<dubbo:service>	token	token	string/boolean	可选	false	服务治理	令牌验证，为空表示不开启，如果为true，表示随机生成动态令牌，否则使用静态令牌，令牌的作用是防止消费者绕过注册中心直接访问，保证注册中心的授权功能有效，如果使用点对点调用，需关闭令牌功能	2.0.0以上版本
+<dubbo:service>	registry	 	string	可选	缺省向所有registry注册	配置关联	向指定注册中心注册，在多个注册中心时使用，值为<dubbo:registry>的id属性，多个注册中心ID用逗号分隔，如果不想将该服务注册到任何registry，可将值设为N/A	2.0.0以上版本
+<dubbo:service>	provider	 	string	可选	缺使用第一个provider配置	配置关联	指定provider，值为<dubbo:provider>的id属性	2.0.0以上版本
+<dubbo:service>	deprecated	deprecated	boolean	可选	false	服务治理	服务是否过时，如果设为true，消费方引用时将打印服务过时警告error日志	2.0.5以上版本
+<dubbo:service>	dynamic	dynamic	boolean	可选	true	服务治理	服务是否动态注册，如果设为false，注册后将显示后disable状态，需人工启用，并且服务提供者停止时，也不会自动取消册，需人工禁用。	2.0.5以上版本
+<dubbo:service>	accesslog	accesslog	string/boolean	可选	false	服务治理	设为true，将向logger中输出访问日志，也可填写访问日志文件路径，直接把访问日志输出到指定文件	2.0.5以上版本
+<dubbo:service>	owner	owner	string	可选	 	服务治理	服务负责人，用于服务治理，请填写负责人公司邮箱前缀	2.0.5以上版本
+<dubbo:service>	document	document	string	可选	 	服务治理	服务文档URL	2.0.5以上版本
+<dubbo:service>	weight	weight	int	可选	 	性能调优	服务权重	2.0.5以上版本
+<dubbo:service>	executes	executes	int	可选	0	性能调优	服务提供者每服务每方法最大可并行执行请求数	2.0.5以上版本
+<dubbo:service>	actives	actives	int	可选	0	性能调优	每服务消费者每服务每方法最大并发调用数	2.0.5以上版本
+<dubbo:service>	proxy	proxy	string	可选	javassist	性能调优	生成动态代理方式，可选：jdk/javassist	2.0.5以上版本
+<dubbo:service>	cluster	cluster	string	可选	failover	性能调优	集群方式，可选：failover/failfast/failsafe/failback/forking	2.0.5以上版本
+<dubbo:service>	filter	service.filter	string	可选	default	性能调优	服务提供方远程调用过程拦截器名称，多个名称用逗号分隔	2.0.5以上版本
+<dubbo:service>	listener	exporter.listener	string	可选	default	性能调优	服务提供方导出服务监听器名称，多个名称用逗号分隔	 
+<dubbo:service>	protocol	 	string	可选	 	配置关联	使用指定的协议暴露服务，在多协议时使用，值为<dubbo:protocol>的id属性，多个协议ID用逗号分隔	2.0.5以上版本
+<dubbo:service>	layer	layer	string	可选	 	服务治理	服务提供者所在的分层。如：biz、dao、intl:web、china:acton。	2.0.7以上版本
+<dubbo:service>	register	register	boolean	可选	true	服务治理	该协议的服务是否注册到注册中心	2.0.8以上版本
+<dubbo:reference/>
+(+) (#)
+
+服务消费者引用服务配置：
+配置类：com.alibaba.dubbo.config.ReferenceConfig
+
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:reference>	id	 	string	必填	 	配置关联	服务引用BeanId	1.0.0以上版本
+<dubbo:reference>	interface	 	class	必填	 	服务发现	服务接口名	1.0.0以上版本
+<dubbo:reference>	version	version	string	可选	 	服务发现	服务版本，与服务提供者的版本一致	1.0.0以上版本
+<dubbo:reference>	group	group	string	可选	 	服务发现	服务分组，当一个接口有多个实现，可以用分组区分，必需和服务提供方一致	1.0.7以上版本
+<dubbo:reference>	timeout	timeout	long	可选	缺省使用<dubbo:consumer>的timeout	性能调优	服务方法调用超时时间(毫秒)	1.0.5以上版本
+<dubbo:reference>	retries	retries	int	可选	缺省使用<dubbo:consumer>的retries	性能调优	远程服务调用重试次数，不包括第一次调用，不需要重试请设为0	2.0.0以上版本
+<dubbo:reference>	connections	connections	int	可选	缺省使用<dubbo:consumer>的connections	性能调优	对每个提供者的最大连接数，rmi、http、hessian等短连接协议表示限制连接数，dubbo等长连接协表示建立的长连接个数	2.0.0以上版本
+<dubbo:reference>	loadbalance	loadbalance	string	可选	缺省使用<dubbo:consumer>的loadbalance	性能调优	负载均衡策略，可选值：random,roundrobin,leastactive，分别表示：随机，轮循，最少活跃调用	2.0.0以上版本
+<dubbo:reference>	async	async	boolean	可选	缺省使用<dubbo:consumer>的async	性能调优	是否异步执行，不可靠异步，只是忽略返回值，不阻塞执行线程	2.0.0以上版本
+<dubbo:reference>	generic	generic	boolean	可选	缺省使用<dubbo:consumer>的generic	服务治理	是否缺省泛化接口，如果为泛化接口，将返回GenericService	2.0.0以上版本
+<dubbo:reference>	check	check	boolean	可选	缺省使用<dubbo:consumer>的check	服务治理	启动时检查提供者是否存在，true报错，false忽略	2.0.0以上版本
+<dubbo:reference>	url	<url>	string	可选	 	服务治理	点对点直连服务提供者地址，将绕过注册中心	1.0.6以上版本
+<dubbo:reference>	stub	stub	class/boolean	可选	 	服务治理	服务接口客户端本地代理类名，用于在客户端执行本地逻辑，如本地缓存等，该本地代理类的构造函数必须允许传入远程代理对象，构造函数如：public XxxServiceLocal(XxxService xxxService)	2.0.0以上版本
+<dubbo:reference>	mock	mock	class/boolean	可选	 	服务治理	服务接口调用失败Mock实现类名，该Mock类必须有一个无参构造函数，与Local的区别在于，Local总是被执行，而Mock只在出现非业务异常(比如超时，网络异常等)时执行，Local在远程调用之前执行，Mock在远程调用后执行。	Dubbo1.0.13及其以上版本支持
+<dubbo:reference>	cache	cache	string/boolean	可选	 	服务治理	以调用参数为key，缓存返回结果，可选：lru, threadlocal, jcache等	Dubbo2.1.0及其以上版本支持
+<dubbo:reference>	validation	validation	boolean	可选	 	服务治理	是否启用JSR303标准注解验证，如果启用，将对方法参数上的注解进行校验	Dubbo2.1.0及其以上版本支持
+<dubbo:reference>	proxy	proxy	boolean	可选	javassist	性能调优	选择动态代理实现策略，可选：javassist, jdk	2.0.2以上版本
+<dubbo:reference>	client	client	string	可选	 	性能调优	客户端传输类型设置，如Dubbo协议的netty或mina。	Dubbo2.0.0以上版本支持
+<dubbo:reference>	registry	 	string	可选	缺省将从所有注册中心获服务列表后合并结果	配置关联	从指定注册中心注册获取服务列表，在多个注册中心时使用，值为<dubbo:registry>的id属性，多个注册中心ID用逗号分隔	2.0.0以上版本
+<dubbo:reference>	owner	owner	string	可选	 	服务治理	调用服务负责人，用于服务治理，请填写负责人公司邮箱前缀	2.0.5以上版本
+<dubbo:reference>	actives	actives	int	可选	0	性能调优	每服务消费者每服务每方法最大并发调用数	2.0.5以上版本
+<dubbo:reference>	cluster	cluster	string	可选	failover	性能调优	集群方式，可选：failover/failfast/failsafe/failback/forking	2.0.5以上版本
+<dubbo:reference>	filter	reference.filter	string	可选	default	性能调优	服务消费方远程调用过程拦截器名称，多个名称用逗号分隔	2.0.5以上版本
+<dubbo:reference>	listener	invoker.listener	string	可选	default	性能调优	服务消费方引用服务监听器名称，多个名称用逗号分隔	2.0.5以上版本
+<dubbo:reference>	layer	layer	string	可选	 	服务治理	服务调用者所在的分层。如：biz、dao、intl:web、china:acton。	2.0.7以上版本
+<dubbo:reference>	init	init	boolean	可选	false	性能调优	是否在afterPropertiesSet()时饥饿初始化引用，否则等到有人注入或引用该实例时再初始化。	2.0.10以上版本
+<dubbo:reference>	protocol	protocol	string	可选	 	服力治理	只调用指定协议的服务提供方，其它协议忽略。	2.2.0以上版本
+<dubbo:protocol/>
+(+) (#)
+
+服务提供者协议配置：
+配置类：com.alibaba.dubbo.config.ProtocolConfig
+说明：如果需要支持多协议，可以声明多个<dubbo:protocol>标签，并在<dubbo:service>中通过protocol属性指定使用的协议。
+
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:protocol>	id	 	string	可选	dubbo	配置关联	协议BeanId，可以在<dubbo:service protocol="">中引用此ID，如果ID不填，缺省和name属性值一样，重复则在name后加序号。	2.0.5以上版本
+<dubbo:protocol>	name	<protocol>	string	必填	dubbo	性能调优	协议名称	2.0.5以上版本
+<dubbo:protocol>	port	<port>	int	可选	dubbo协议缺省端口为20880，rmi协议缺省端口为1099，http和hessian协议缺省端口为80 
+如果配置为-1 或者 没有配置port，则会分配一个没有被占用的端口。Dubbo 2.4.0+，分配的端口在协议缺省端口的基础上增长，确保端口段可控。	服务发现	服务端口	2.0.5以上版本
+<dubbo:protocol>	host	<host>	string	可选	自动查找本机IP	服务发现	-服务主机名，多网卡选择或指定VIP及域名时使用，为空则自动查找本机IP，-建议不要配置，让Dubbo自动获取本机IP	2.0.5以上版本
+<dubbo:protocol>	threadpool	threadpool	string	可选	fixed	性能调优	线程池类型，可选：fixed/cached	2.0.5以上版本
+<dubbo:protocol>	threads	threads	int	可选	100	性能调优	服务线程池大小(固定大小)	2.0.5以上版本
+<dubbo:protocol>	iothreads	threads	int	可选	cpu个数+1	性能调优	io线程池大小(固定大小)	2.0.5以上版本
+<dubbo:protocol>	accepts	accepts	int	可选	0	性能调优	服务提供方最大可接受连接数	2.0.5以上版本
+<dubbo:protocol>	payload	payload	int	可选	88388608(=8M)	性能调优	请求及响应数据包大小限制，单位：字节	2.0.5以上版本
+<dubbo:protocol>	codec	codec	string	可选	dubbo	性能调优	协议编码方式	2.0.5以上版本
+<dubbo:protocol>	serialization	serialization	string	可选	dubbo协议缺省为hessian2，rmi协议缺省为java，http协议缺省为json	性能调优	协议序列化方式，当协议支持多种序列化方式时使用，比如：dubbo协议的dubbo,hessian2,java,compactedjava，以及http协议的json等	2.0.5以上版本
+<dubbo:protocol>	accesslog	accesslog	string/boolean	可选	 	服务治理	设为true，将向logger中输出访问日志，也可填写访问日志文件路径，直接把访问日志输出到指定文件	2.0.5以上版本
+<dubbo:protocol>	path	<path>	string	可选	 	服务发现	提供者上下文路径，为服务path的前缀	2.0.5以上版本
+<dubbo:protocol>	transporter	transporter	string	可选	dubbo协议缺省为netty	性能调优	协议的服务端和客户端实现类型，比如：dubbo协议的mina,netty等，可以分拆为server和client配置	2.0.5以上版本
+<dubbo:protocol>	server	server	string	可选	dubbo协议缺省为netty，http协议缺省为servlet	性能调优	协议的服务器端实现类型，比如：dubbo协议的mina,netty等，http协议的jetty,servlet等	2.0.5以上版本
+<dubbo:protocol>	client	client	string	可选	dubbo协议缺省为netty	性能调优	协议的客户端实现类型，比如：dubbo协议的mina,netty等	2.0.5以上版本
+<dubbo:protocol>	dispatcher	dispatcher	string	可选	dubbo协议缺省为all	性能调优	协议的消息派发方式，用于指定线程模型，比如：dubbo协议的all, direct, message, execution, connection等	2.1.0以上版本
+<dubbo:protocol>	queues	queues	int	可选	0	性能调优	线程池队列大小，当线程池满时，排队等待执行的队列大小，建议不要设置，当线程程池时应立即失败，重试其它服务提供机器，而不是排队，除非有特殊需求。	2.0.5以上版本
+<dubbo:protocol>	charset	charset	string	可选	UTF-8	性能调优	序列化编码	2.0.5以上版本
+<dubbo:protocol>	buffer	buffer	int	可选	8192	性能调优	网络读写缓冲区大小	2.0.5以上版本
+<dubbo:protocol>	heartbeat	heartbeat	int	可选	0	性能调优	心跳间隔，对于长连接，当物理层断开时，比如拔网线，TCP的FIN消息来不及发送，对方收不到断开事件，此时需要心跳来帮助检查连接是否已断开	2.0.10以上版本
+<dubbo:protocol>	telnet	telnet	string	可选	 	服务治理	所支持的telnet命令，多个命令用逗号分隔	2.0.5以上版本
+<dubbo:protocol>	register	register	boolean	可选	true	服务治理	该协议的服务是否注册到注册中心	2.0.8以上版本
+<dubbo:protocol>	contextpath	contextpath	String	可选	缺省为空串	服务治理	 	2.0.6以上版本
+<dubbo:registry/>
+(+) (#)
+
+注册中心配置：
+配置类：com.alibaba.dubbo.config.RegistryConfig
+说明：如果有多个不同的注册中心，可以声明多个<dubbo:registry>标签，并在<dubbo:service>或<dubbo:reference>的registry属性指定使用的注册中心。
+
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:registry>	id	 	string	可选	 	配置关联	注册中心引用BeanId，可以在<dubbo:service registry="">或<dubbo:reference registry="">中引用此ID	1.0.16以上版本
+<dubbo:registry>	address	<host:port>	string	必填	 	服务发现	注册中心服务器地址，如果地址没有端口缺省为9090，同一集群内的多个地址用逗号分隔，如：ip:port,ip:port，不同集群的注册中心，请配置多个<dubbo:registry>标签	1.0.16以上版本
+<dubbo:registry>	protocol	<protocol>	string	可选	dubbo	服务发现	注同中心地址协议，支持dubbo, http, local三种协议，分别表示，dubbo地址，http地址，本地注册中心	2.0.0以上版本
+<dubbo:registry>	port	<port>	int	可选	9090	服务发现	注册中心缺省端口，当address没有带端口时使用此端口做为缺省值	2.0.0以上版本
+<dubbo:registry>	username	<username>	string	可选	 	服务治理	登录注册中心用户名，如果注册中心不需要验证可不填	2.0.0以上版本
+<dubbo:registry>	password	<password>	string	可选	 	服务治理	登录注册中心密码，如果注册中心不需要验证可不填	2.0.0以上版本
+<dubbo:registry>	transport	registry.transporter	string	可选	netty	性能调优	网络传输方式，可选mina,netty	2.0.0以上版本
+<dubbo:registry>	timeout	registry.timeout	int	可选	5000	性能调优	注册中心请求超时时间(毫秒)	2.0.0以上版本
+<dubbo:registry>	session	registry.session	int	可选	60000	性能调优	注册中心会话超时时间(毫秒)，用于检测提供者非正常断线后的脏数据，比如用心跳检测的实现，此时间就是心跳间隔，不同注册中心实现不一样。	2.1.0以上版本
+<dubbo:registry>	file	registry.file	string	可选	 	服务治理	使用文件缓存注册中心地址列表及服务提供者列表，应用重启时将基于此文件恢复，注意：两个注册中心不能使用同一文件存储	2.0.0以上版本
+<dubbo:registry>	wait	registry.wait	int	可选	0	性能调优	停止时等待通知完成时间(毫秒)	2.0.0以上版本
+<dubbo:registry>	check	check	boolean	可选	true	服务治理	注册中心不存在时，是否报错	2.0.0以上版本
+<dubbo:registry>	register	register	boolean	可选	true	服务治理	是否向此注册中心注册服务，如果设为false，将只订阅，不注册	2.0.5以上版本
+<dubbo:registry>	subscribe	subscribe	boolean	可选	true	服务治理	是否向此注册中心订阅服务，如果设为false，将只注册，不订阅	2.0.5以上版本
+<dubbo:registry>	dynamic	dynamic	boolean	可选	true	服务治理	服务是否动态注册，如果设为false，注册后将显示后disable状态，需人工启用，并且服务提供者停止时，也不会自动取消册，需人工禁用。	2.0.5以上版本
+<dubbo:monitor/>
+(+) (#)
+
+监控中心配置：
+配置类：com.alibaba.dubbo.config.MonitorConfig
+
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:monitor>	protocol	protocol	string	可选	dubbo	服务治理	监控中心协议，如果为protocol="registry"，表示从注册中心发现监控中心地址，否则直连监控中心。	2.0.9以上版本
+<dubbo:monitor>	address	<url>	string	可选	N/A	服务治理	直连监控中心服务器地址，address="10.20.130.230:12080"	1.0.16以上版本
+<dubbo:application/>
+(+) (#)
+
+应用信息配置：
+配置类：com.alibaba.dubbo.config.ApplicationConfig
+
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:application>	name	application	string	必填	 	服务治理	当前应用名称，用于注册中心计算应用间依赖关系，注意：消费者和提供者应用名不要一样，此参数不是匹配条件，你当前项目叫什么名字就填什么，和提供者消费者角色无关，比如：kylin应用调用了morgan应用的服务，则kylin项目配成kylin，morgan项目配成morgan，可能kylin也提供其它服务给别人使用，但kylin项目永远配成kylin，这样注册中心将显示kylin依赖于morgan	1.0.16以上版本
+<dubbo:application>	version	application.version	string	可选	 	服务治理	当前应用的版本	2.2.0以上版本
+<dubbo:application>	owner	owner	string	可选	 	服务治理	应用负责人，用于服务治理，请填写负责人公司邮箱前缀	2.0.5以上版本
+<dubbo:application>	organization	organization	string	可选	 	服务治理	组织名称(BU或部门)，用于注册中心区分服务来源，此配置项建议不要使用autoconfig，直接写死在配置中，比如china,intl,itu,crm,asc,dw,aliexpress等	2.0.0以上版本
+<dubbo:application>	architecture 
+architecture 
+string	可选	 	服务治理	用于服务分层对应的架构。如，intl、china。不同的架构使用不同的分层。	2.0.7以上版本
+<dubbo:application>	environment	environment	string	可选	 	服务治理	应用环境，如：develop/test/product，不同环境使用不同的缺省值，以及作为只用于开发测试功能的限制条件	2.0.0以上版本
+<dubbo:application>	compiler	compiler	string	可选	javassist	性能优化	Java字节码编译器，用于动态类的生成，可选：jdk或javassist	2.1.0以上版本
+<dubbo:application>	logger	logger	string	可选	slf4j	性能优化	日志输出方式，可选：slf4j,jcl,log4j,jdk	2.2.0以上版本
+<dubbo:module/>
+(+) (#)
+
+模块信息配置：
+配置类：com.alibaba.dubbo.config.ModuleConfig
+
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:module>	name	module	string	必填	 	服务治理	当前模块名称，用于注册中心计算模块间依赖关系	2.2.0以上版本
+<dubbo:module>	version	module.version	string	可选	 	服务治理	当前模块的版本	2.2.0以上版本
+<dubbo:module>	owner	owner	string	可选	 	服务治理	模块负责人，用于服务治理，请填写负责人公司邮箱前缀	2.2.0以上版本
+<dubbo:module>	organization	organization	string	可选	 	服务治理	组织名称(BU或部门)，用于注册中心区分服务来源，此配置项建议不要使用autoconfig，直接写死在配置中，比如china,intl,itu,crm,asc,dw,aliexpress等	2.2.0以上版本
+<dubbo:provider/>
+(+) (#)
+
+服务提供者缺省值配置：
+配置类：com.alibaba.dubbo.config.ProviderConfig
+说明：该标签为<dubbo:service>和<dubbo:protocol>标签的缺省值设置。
+
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:provider>	id	 	string	可选	dubbo	配置关联	协议BeanId，可以在<dubbo:service proivder="">中引用此ID	1.0.16以上版本
+<dubbo:provider>	protocol	<protocol>	string	可选	dubbo	性能调优	协议名称	1.0.16以上版本
+<dubbo:provider>	host	<host>	string	可选	自动查找本机IP	服务发现	服务主机名，多网卡选择或指定VIP及域名时使用，为空则自动查找本机IP，建议不要配置，让Dubbo自动获取本机IP	1.0.16以上版本
+<dubbo:provider>	threads	threads	int	可选	100	性能调优	服务线程池大小(固定大小)	1.0.16以上版本
+<dubbo:provider>	payload	payload	int	可选	88388608(=8M)	性能调优	请求及响应数据包大小限制，单位：字节	2.0.0以上版本
+<dubbo:provider>	path	<path>	string	可选	 	服务发现	提供者上下文路径，为服务path的前缀	2.0.0以上版本
+<dubbo:provider>	server	server	string	可选	dubbo协议缺省为netty，http协议缺省为servlet	性能调优	协议的服务器端实现类型，比如：dubbo协议的mina,netty等，http协议的jetty,servlet等	2.0.0以上版本
+<dubbo:provider>	client	client	string	可选	dubbo协议缺省为netty	性能调优	协议的客户端实现类型，比如：dubbo协议的mina,netty等	2.0.0以上版本
+<dubbo:provider>	codec	codec	string	可选	dubbo	性能调优	协议编码方式	2.0.0以上版本
+<dubbo:provider>	serialization	serialization	string	可选	dubbo协议缺省为hessian2，rmi协议缺省为java，http协议缺省为json	性能调优	协议序列化方式，当协议支持多种序列化方式时使用，比如：dubbo协议的dubbo,hessian2,java,compactedjava，以及http协议的json,xml等	2.0.5以上版本
+<dubbo:provider>	default	 	boolean	可选	false	配置关联	是否为缺省协议，用于多协议	1.0.16以上版本
+<dubbo:provider>	filter	service.filter	string	可选	 	性能调优	服务提供方远程调用过程拦截器名称，多个名称用逗号分隔	2.0.5以上版本
+<dubbo:provider>	listener	exporter.listener	string	可选	 	性能调优	服务提供方导出服务监听器名称，多个名称用逗号分隔	2.0.5以上版本
+<dubbo:provider>	threadpool	threadpool	string	可选	fixed	性能调优	线程池类型，可选：fixed/cached	2.0.5以上版本
+<dubbo:provider>	accepts	accepts	int	可选	0	性能调优	服务提供者最大可接受连接数	2.0.5以上版本
+<dubbo:provider>	version	version	string	可选	0.0.0	服务发现	服务版本，建议使用两位数字版本，如：1.0，通常在接口不兼容时版本号才需要升级	2.0.5以上版本
+<dubbo:provider>	group	group	string	可选	 	服务发现	服务分组，当一个接口有多个实现，可以用分组区分	2.0.5以上版本
+<dubbo:provider>	delay	delay	int	可选	0	性能调优	延迟注册服务时间(毫秒)- ，设为-1时，表示延迟到Spring容器初始化完成时暴露服务	2.0.5以上版本
+<dubbo:provider>	timeout	default.timeout	int	可选	1000	性能调优	远程服务调用超时时间(毫秒)	2.0.5以上版本
+<dubbo:provider>	retries	default.retries	int	可选	2	性能调优	远程服务调用重试次数，不包括第一次调用，不需要重试请设为0	2.0.5以上版本
+<dubbo:provider>	connections	default.connections	int	可选	0	性能调优	对每个提供者的最大连接数，rmi、http、hessian等短连接协议表示限制连接数，dubbo等长连接协表示建立的长连接个数	2.0.5以上版本
+<dubbo:provider>	loadbalance	default.loadbalance	string	可选	random	性能调优	负载均衡策略，可选值：random,roundrobin,leastactive，分别表示：随机，轮循，最少活跃调用	2.0.5以上版本
+<dubbo:provider>	async	default.async	boolean	可选	false	性能调优	是否缺省异步执行，不可靠异步，只是忽略返回值，不阻塞执行线程	2.0.5以上版本
+<dubbo:provider>	stub	stub	boolean	可选	false	服务治理	设为true，表示使用缺省代理类名，即：接口名 + Local后缀。	2.0.5以上版本
+<dubbo:provider>	mock	mock	boolean	可选	false	服务治理	设为true，表示使用缺省Mock类名，即：接口名 + Mock后缀。	2.0.5以上版本
+<dubbo:provider>	token	token	boolean	可选	false	服务治理	令牌验证，为空表示不开启，如果为true，表示随机生成动态令牌	2.0.5以上版本
+<dubbo:provider>	registry	registry	string	可选	缺省向所有registry注册	配置关联	向指定注册中心注册，在多个注册中心时使用，值为<dubbo:registry>的id属性，多个注册中心ID用逗号分隔，如果不想将该服务注册到任何registry，可将值设为N/A	2.0.5以上版本
+<dubbo:provider>	dynamic	dynamic	boolean	可选	true	服务治理	服务是否动态注册，如果设为false，注册后将显示后disable状态，需人工启用，并且服务提供者停止时，也不会自动取消册，需人工禁用。	2.0.5以上版本
+<dubbo:provider>	accesslog	accesslog	string/boolean	可选	false	服务治理	设为true，将向logger中输出访问日志，也可填写访问日志文件路径，直接把访问日志输出到指定文件	2.0.5以上版本
+<dubbo:provider>	owner	owner	string	可选	 	服务治理	服务负责人，用于服务治理，请填写负责人公司邮箱前缀	2.0.5以上版本
+<dubbo:provider>	document	document	string	可选	 	服务治理	服务文档URL	2.0.5以上版本
+<dubbo:provider>	weight	weight	int	可选	 	性能调优	服务权重	2.0.5以上版本
+<dubbo:provider>	executes	executes	int	可选	0	性能调优	服务提供者每服务每方法最大可并行执行请求数	2.0.5以上版本
+<dubbo:provider>	actives	default.actives	int	可选	0	性能调优	每服务消费者每服务每方法最大并发调用数	2.0.5以上版本
+<dubbo:provider>	proxy	proxy	string	可选	javassist	性能调优	生成动态代理方式，可选：jdk/javassist	2.0.5以上版本
+<dubbo:provider>	cluster	default.cluster	string	可选	failover	性能调优	集群方式，可选：failover/failfast/failsafe/failback/forking	2.0.5以上版本
+<dubbo:provider>	deprecated	deprecated	boolean	可选	false	服务治理	服务是否过时，如果设为true，消费方引用时将打印服务过时警告error日志	2.0.5以上版本
+<dubbo:provider>	queues	queues	int	可选	0	性能调优	线程池队列大小，当线程池满时，排队等待执行的队列大小，建议不要设置，当线程程池时应立即失败，重试其它服务提供机器，而不是排队，除非有特殊需求。	2.0.5以上版本
+<dubbo:provider>	charset	charset	string	可选	UTF-8	性能调优	序列化编码	2.0.5以上版本
+<dubbo:provider>	buffer	buffer	int	可选	8192	性能调优	网络读写缓冲区大小	2.0.5以上版本
+<dubbo:provider>	iothreads	iothreads	int	可选	CPU + 1	性能调优	IO线程池，接收网络读写中断，以及序列化和反序列化，不处理业务，业务线程池参见threads配置，此线程池和CPU相关，不建议配置。	2.0.5以上版本
+<dubbo:provider>	telnet	telnet	string	可选	 	服务治理	所支持的telnet命令，多个命令用逗号分隔	2.0.5以上版本
+<dubbo:service>	contextpath	contextpath	String	可选	缺省为空串	服务治理	 	2.0.6以上版本
+<dubbo:provider>	layer	layer	string	可选	 	服务治理	服务提供者所在的分层。如：biz、dao、intl:web、china:acton。	2.0.7以上版本
+<dubbo:consumer/>
+(+) (#)
+
+服务消费者缺省值配置：
+配置类：com.alibaba.dubbo.config.ConsumerConfig
+说明：该标签为<dubbo:reference>标签的缺省值设置。
+
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:consumer>	timeout	default.timeout	int	可选	1000	性能调优	远程服务调用超时时间(毫秒)	1.0.16以上版本
+<dubbo:consumer>	retries	default.retries	int	可选	2	性能调优	远程服务调用重试次数，不包括第一次调用，不需要重试请设为0	1.0.16以上版本
+<dubbo:consumer>	loadbalance	default.loadbalance	string	可选	random	性能调优	负载均衡策略，可选值：random,roundrobin,leastactive，分别表示：随机，轮循，最少活跃调用	1.0.16以上版本
+<dubbo:consumer>	async	default.async	boolean	可选	false	性能调优	是否缺省异步执行，不可靠异步，只是忽略返回值，不阻塞执行线程	2.0.0以上版本
+<dubbo:consumer>	connections	default.connections	int	可选	100	性能调优	每个服务对每个提供者的最大连接数，rmi、http、hessian等短连接协议支持此配置，dubbo协议长连接不支持此配置	1.0.16以上版本
+<dubbo:consumer>	generic	generic	boolean	可选	false	服务治理	是否缺省泛化接口，如果为泛化接口，将返回GenericService	2.0.0以上版本
+<dubbo:consumer>	check	check	boolean	可选	true	服务治理	启动时检查提供者是否存在，true报错，false忽略	1.0.16以上版本
+<dubbo:consumer>	proxy	proxy	string	可选	javassist	性能调优	生成动态代理方式，可选：jdk/javassist	2.0.5以上版本
+<dubbo:consumer>	owner	owner	string	可选	 	服务治理	调用服务负责人，用于服务治理，请填写负责人公司邮箱前缀	2.0.5以上版本
+<dubbo:consumer>	actives	default.actives	int	可选	0	性能调优	每服务消费者每服务每方法最大并发调用数	2.0.5以上版本
+<dubbo:consumer>	cluster	default.cluster	string	可选	failover	性能调优	集群方式，可选：failover/failfast/failsafe/failback/forking	2.0.5以上版本
+<dubbo:consumer>	filter	reference.filter	string	可选	 	性能调优	服务消费方远程调用过程拦截器名称，多个名称用逗号分隔	2.0.5以上版本
+<dubbo:consumer>	listener	invoker.listener	string	可选	 	性能调优	服务消费方引用服务监听器名称，多个名称用逗号分隔	2.0.5以上版本
+<dubbo:consumer>	registry	 	string	可选	缺省向所有registry注册	配置关联	向指定注册中心注册，在多个注册中心时使用，值为<dubbo:registry>的id属性，多个注册中心ID用逗号分隔，如果不想将该服务注册到任何registry，可将值设为N/A	2.0.5以上版本
+<dubbo:consumer>	layer	layer	string	可选	 	服务治理	服务调用者所在的分层。如：biz、dao、intl:web、china:acton。	2.0.7以上版本
+<dubbo:consumer>	init	init	boolean	可选	false	性能调优	是否在afterPropertiesSet()时饥饿初始化引用，否则等到有人注入或引用该实例时再初始化。	2.0.10以上版本
+<dubbo:consumer>	cache	cache	string/boolean	可选	 	服务治理	以调用参数为key，缓存返回结果，可选：lru, threadlocal, jcache等	Dubbo2.1.0及其以上版本支持
+<dubbo:consumer>	validation	validation	boolean	可选	 	服务治理	是否启用JSR303标准注解验证，如果启用，将对方法参数上的注解进行校验	Dubbo2.1.0及其以上版本支持
+<dubbo:method/>
+(+) (#)
+
+方法级配置：
+配置类：com.alibaba.dubbo.config.MethodConfig
+说明：该标签为<dubbo:service>或<dubbo:reference>的子标签，用于控制到方法级，
+
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:method>	name	 	string	必填	 	标识	方法名	1.0.8以上版本
+<dubbo:method>	timeout	<metodName>.timeout	int	可选	缺省为的timeout	性能调优	方法调用超时时间(毫秒)	1.0.8以上版本
+<dubbo:method>	retries	<metodName>.retries	int	可选	缺省为<dubbo:reference>的retries	性能调优	远程服务调用重试次数，不包括第一次调用，不需要重试请设为0	2.0.0以上版本
+<dubbo:method>	loadbalance	<metodName>.loadbalance	string	可选	缺省为的loadbalance	性能调优	负载均衡策略，可选值：random,roundrobin,leastactive，分别表示：随机，轮循，最少活跃调用	2.0.0以上版本
+<dubbo:method>	async	<metodName>.async	boolean	可选	缺省为<dubbo:reference>的async	性能调优	是否异步执行，不可靠异步，只是忽略返回值，不阻塞执行线程	1.0.9以上版本
+<dubbo:method>	sent	<methodName>.sent	boolean	可选	true	性能调优	异步调用时，标记sent=true时，表示网络已发出数据	2.0.6以上版本
+<dubbo:method>	actives	<metodName>.actives	int	可选	0	性能调优	每服务消费者最大并发调用限制	2.0.5以上版本
+<dubbo:method>	executes	<metodName>.executes	int	可选	0	性能调优	每服务每方法最大使用线程数限制- -，此属性只在<dubbo:method>作为<dubbo:service>子标签时有效	2.0.5以上版本
+<dubbo:method>	deprecated	<methodName>.deprecated	boolean	可选	false	服务治理	服务方法是否过时，此属性只在<dubbo:method>作为<dubbo:service>子标签时有效	2.0.5以上版本
+<dubbo:method>	sticky	<methodName>.sticky	boolean	可选	false	服务治理	设置true 该接口上的所有方法使用同一个provider.如果需要更复杂的规则，请使用用路由	2.0.6以上版本
+<dubbo:method>	return	<methodName>.return	boolean	可选	true	性能调优	方法调用是否需要返回值,async设置为true时才生效，如果设置为true，则返回future，或回调onreturn等方法，如果设置为false，则请求发送成功后直接返回Null	2.0.6以上版本
+<dubbo:method>	oninvoke	attribute属性，不在URL中体现	String	可选	 	性能调优	方法执行前拦截	2.0.6以上版本
+<dubbo:method>	onreturn	attribute属性，不在URL中体现	String	可选	 	性能调优	方法执行返回后拦截	2.0.6以上版本
+<dubbo:method>	onthrow	attribute属性，不在URL中体现	String	可选	 	性能调优	方法执行有异常拦截	2.0.6以上版本
+<dubbo:method>	cache	<methodName>.cache	string/boolean	可选	 	服务治理	以调用参数为key，缓存返回结果，可选：lru, threadlocal, jcache等	Dubbo2.1.0及其以上版本支持
+<dubbo:method>	validation	<methodName>.validation	boolean	可选	 	服务治理	是否启用JSR303标准注解验证，如果启用，将对方法参数上的注解进行校验	Dubbo2.1.0及其以上版本支持
+比如：
+
+<dubbo:reference interface="com.xxx.XxxService">
+    <dubbo:method name="findXxx" timeout="3000" retries="2" />
+</dubbo:reference>
+<dubbo:argument/>
+(+) (#)
+
+方法参数配置：
+配置类：com.alibaba.dubbo.config.ArgumentConfig
+说明：该标签为<dubbo:method>的子标签，用于方法参数的特征描述，比如：
+
+<dubbo:method name="findXxx" timeout="3000" retries="2">
+    <dubbo:argument index="0" callback="true" />
+<dubbo:method>
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:argument>	index	 	int	必填	 	标识	方法名	2.0.6以上版本
+<dubbo:argument>	type	 	String	与index二选一	 	标识	通过参数类型查找参数的index	2.0.6以上版本
+<dubbo:argument>	callback	<metodName><index>.retries	boolean	可选	 	服务治理	参数是否为callback接口，如果为callback，服务提供方将生成反向代理，可以从服务提供方反向调用消费方，通常用于事件推送.	2.0.6以上版本
+<dubbo:parameter/>
+(+) (#)
+
+选项参数配置：
+配置类：java.util.Map
+说明：该标签为<dubbo:protocol>或<dubbo:service>或<dubbo:provider>或<dubbo:reference>或<dubbo:consumer>的子标签，用于配置自定义参数，该配置项将作为扩展点设置自定义参数使用。
+
+标签	属性	对应URL参数	类型	是否必填	缺省值	作用	描述	兼容性
+<dubbo:parameter>	key	key	string	必填	 	服务治理	路由参数键	2.0.0以上版本
+<dubbo:parameter>	value	value	string	必填	 	服务治理	路由参数值	2.0.0以上版本
+比如：
+
+<dubbo:protocol name="napoli">
+    <dubbo:parameter key="http://10.20.160.198/wiki/display/dubbo/napoli.queue.name" value="xxx" />
+</dubbo:protocol>
+也可以：
+
+<dubbo:protocol name="jms" p:queue="xxx" />
+详细参见：自定义参数
+
+协议参考手册
+(+) (#)
+
+	推荐使用Dubbo协议
+	性能测试报告
+各协议的性能情况，请参见：性能测试报告 (+)
+dubbo://
+(+) (#)
+
+	Dubbo缺省协议采用单一长连接和NIO异步通讯，适合于小数据量大并发的服务调用，以及服务消费者机器数远大于服务提供者机器数的情况。
+	Dubbo缺省协议不适合传送大数据量的服务，比如传文件，传视频等，除非请求量很低。
+<dubbo:protocol name="dubbo" port="20880" />
+Set default protocol:
+
+<dubbo:provider protocol="dubbo" />
+Set service protocol:
+
+<dubbo:service protocol="dubbo" />
+Multi port:
+
+<dubbo:protocol id="dubbo1" name="dubbo" port="20880" />
+<dubbo:protocol id="dubbo2" name="dubbo" port="20881" />
+Dubbo protocol options:
+
+<dubbo:protocol name=“dubbo” port=“9090” server=“netty” client=“netty” codec=“dubbo” serialization=“hessian2” charset=“UTF-8” threadpool=“fixed” threads=“100” queues=“0” iothreads=“9” buffer=“8192” accepts=“1000” payload=“8388608” />
+
+
+Transporter
+mina, netty, grizzy
+Serialization
+dubbo, hessian2, java, json
+Dispatcher
+all, direct, message, execution, connection
+ThreadPool
+fixed, cached
+	Dubbo协议缺省每服务每提供者每消费者使用单一长连接，如果数据量较大，可以使用多个连接。
+<dubbo:protocol name="dubbo" connections="2" />
+<dubbo:service connections=”0”>或<dubbo:reference connections=”0”>表示该服务使用JVM共享长连接。(缺省)
+<dubbo:service connections=”1”>或<dubbo:reference connections=”1”>表示该服务使用独立长连接。
+<dubbo:service connections=”2”>或<dubbo:reference connections=”2”>表示该服务使用独立两条长连接。
+	为防止被大量连接撑挂，可在服务提供方限制大接收连接数，以实现服务提供方自我保护。
+<dubbo:protocol name="dubbo" accepts="1000" />
+缺省协议，使用基于mina1.1.7+hessian3.2.1的tbremoting交互。
+
+连接个数：单连接
+连接方式：长连接
+传输协议：TCP
+传输方式：NIO异步传输
+序列化：Hessian二进制序列化
+适用范围：传入传出参数数据包较小（建议小于100K），消费者比提供者个数多，单一消费者无法压满提供者，尽量不要用dubbo协议传输大文件或超大字符串。
+适用场景：常规远程服务方法调用
+为什么要消费者比提供者个数多：
+因dubbo协议采用单一长连接，
+假设网络为千兆网卡(1024Mbit=128MByte)，
+根据测试经验数据每条连接最多只能压满7MByte(不同的环境可能不一样，供参考)，
+理论上1个服务提供者需要20个服务消费者才能压满网卡。
+
+为什么不能传大包：
+因dubbo协议采用单一长连接，
+如果每次请求的数据包大小为500KByte，假设网络为千兆网卡(1024Mbit=128MByte)，每条连接最大7MByte(不同的环境可能不一样，供参考)，
+单个服务提供者的TPS(每秒处理事务数)最大为：128MByte / 500KByte = 262。
+单个消费者调用单个服务提供者的TPS(每秒处理事务数)最大为：7MByte / 500KByte = 14。
+如果能接受，可以考虑使用，否则网络将成为瓶颈。
+
+为什么采用异步单一长连接：
+因为服务的现状大都是服务提供者少，通常只有几台机器，
+而服务的消费者多，可能整个网站都在访问该服务，
+比如Morgan的提供者只有6台提供者，却有上百台消费者，每天有1.5亿次调用，
+如果采用常规的hessian服务，服务提供者很容易就被压跨，
+通过单一连接，保证单一消费者不会压死提供者，
+长连接，减少连接握手验证等，
+并使用异步IO，复用线程池，防止C10K问题。
+
+(1) 约束：
+
+参数及返回值需实现Serializable接口
+参数及返回值不能自定义实现List, Map, Number, Date, Calendar等接口，只能用JDK自带的实现，因为hessian会做特殊处理，自定义实现类中的属性值都会丢失。()
+Hessian序列化，只传成员属性值和值的类型，不传方法或静态变量，兼容情况：(由吴亚军提供)
+数据通讯	情况	结果
+A->B	类A多一种 属性（或者说类B少一种 属性）	不抛异常，A多的那 个属性的值，B没有， 其他正常
+A->B	枚举A多一种 枚举（或者说B少一种 枚举），A使用多 出来的枚举进行传输	抛异常
+A->B	枚举A多一种 枚举（或者说B少一种 枚举），A不使用 多出来的枚举进行传输	不抛异常，B正常接 收数据
+A->B	A和B的属性 名相同，但类型不相同	抛异常
+A->B	serialId 不相同	正常传输
+总结：会抛异常的情况：枚 举值一边多一种，一边少一种，正好使用了差别的那种，或者属性名相同，类型不同
+接口增加方法，对客户端无影响，如果该方法不是客户端需要的，客户端不需要重新部署；
+输入参数和结果集中增加属性，对客户端无影响，如果客户端并不需要新属性，不用重新
+部署；
+输入参数和结果集属性名变化，对客户端序列化无影响，但是如果客户端不重新部署，不管输入还是输出，属性名变化的属性值是获取不到的。
+总结：服务器端和客户端对领域对象并不需要完全一致，而是按照最大匹配原则。
+
+(2) 配置：
+dubbo.properties：
+
+dubbo.service.protocol=dubbo
+rmi://
+(+) (#)
+
+	RMI协议采用JDK标准的java.rmi.*实现，采用阻塞式短连接和JDK标准序列化方式。
+	如果正在使用RMI提供服务给外部访问（公司内网环境应该不会有攻击风险），同时应用里依赖了老的common-collections包（dubbo不会依赖这个包，请排查自己的应用有没有使用）的情况下，存在反序列化安全风险。
+请检查应用：
+将commons-collections3 请升级到3.2.2版本：https://commons.apache.org/proper/commons-collections/release_3_2_2.html
+将commons-collections4 请升级到4.1版本：https://commons.apache.org/proper/commons-collections/release_4_1.html
+新版本的commons-collections解决了该问题
+如果服务接口继承了java.rmi.Remote接口，可以和原生RMI互操作，即：
+提供者用Dubbo的RMI协议暴露服务，消费者直接用标准RMI接口调用，
+或者提供方用标准RMI暴露服务，消费方用Dubbo的RMI协议调用。
+如果服务接口没有继承java.rmi.Remote接口，
+缺省Dubbo将自动生成一个com.xxx.XxxService$Remote的接口，并继承java.rmi.Remote接口，并以此接口暴露服务，
+但如果设置了<dubbo:protocol name="rmi" codec="spring" />，将不生成$Remote接口，而使用Spring的RmiInvocationHandler接口暴露服务，和Spring兼容。
+Define rmi protocol:
+
+<dubbo:protocol name="rmi" port="1099" />
+Set default protocol:
+
+<dubbo:provider protocol="rmi" />
+Set service protocol:
+
+<dubbo:service protocol="rmi" />
+Multi port:
+
+<dubbo:protocol id="rmi1" name="rmi" port="1099" />
+<dubbo:protocol id="rmi2" name="rmi" port="2099" />
+ 
+<dubbo:service protocol="rmi1" />
+Spring compatible:
+
+<dubbo:protocol name="rmi" codec="spring" />
+Java标准的远程调用协议。
+
+连接个数：多连接
+连接方式：短连接
+传输协议：TCP
+传输方式：同步传输
+序列化：Java标准二进制序列化
+适用范围：传入传出参数数据包大小混合，消费者与提供者个数差不多，可传文件。
+适用场景：常规远程服务方法调用，与原生RMI服务互操作
+(1) 约束：
+
+参数及返回值需实现Serializable接口
+dubbo配置中的超时时间对rmi无效，需使用java启动参数设置：-Dsun.rmi.transport.tcp.responseTimeout=3000，参见下面的RMI配置。
+(2) 配置：
+dubbo.properties：
+
+dubbo.service.protocol=rmi
+(3) RMI配置：
+
+java -Dsun.rmi.transport.tcp.responseTimeout=3000
+更多RMI优化参数请查看：
+http://download.oracle.com/docs/cd/E17409_01/javase/6/docs/technotes/guides/rmi/sunrmiproperties.html
+
+hessian://
+(+) (#)
+
+	Hessian协议用于集成Hessian的服务，Hessian底层采用Http通讯，采用Servlet暴露服务，Dubbo缺省内嵌Jetty作为服务器实现。
+	Hessian是Caucho开源的一个RPC框架：http://hessian.caucho.com，其通讯效率高于WebService和Java自带的序列化。
+依赖：
+
+<dependency>
+    <groupId>com.caucho</groupId>
+    <artifactId>hessian</artifactId>
+    <version>4.0.7</version>
+</dependency>
+可以和原生Hessian服务互操作，即：
+
+提供者用Dubbo的Hessian协议暴露服务，消费者直接用标准Hessian接口调用，
+或者提供方用标准Hessian暴露服务，消费方用Dubbo的Hessian协议调用。
+基于Hessian的远程调用协议。
+
+连接个数：多连接
+连接方式：短连接
+传输协议：HTTP
+传输方式：同步传输
+序列化：Hessian二进制序列化
+适用范围：传入传出参数数据包较大，提供者比消费者个数多，提供者压力较大，可传文件。
+适用场景：页面传输，文件传输，或与原生hessian服务互操作
+(1) 约束：
+
+参数及返回值需实现Serializable接口
+参数及返回值不能自定义实现List, Map, Number, Date, Calendar等接口，只能用JDK自带的实现，因为hessian会做特殊处理，自定义实现类中的属性值都会丢失。
+(2) 配置：
+Define hessian protocol:
+
+<dubbo:protocol name="hessian" port="8080" server="jetty" />
+Set default protocol:
+
+<dubbo:provider protocol="hessian" />
+Set service protocol:
+
+<dubbo:service protocol="hessian" />
+Multi port:
+
+<dubbo:protocol id="hessian1" name="hessian" port="8080" />
+<dubbo:protocol id="hessian2" name="hessian" port="8081" />
+Directly provider:
+
+<dubbo:reference id="helloService" interface="HelloWorld" url="hessian://10.20.153.10:8080/helloWorld" />
+h4. Jetty Server: (default)
+<dubbo:protocol ... server="jetty" />
+h4. Servlet Bridge Server: (recommend)
+<dubbo:protocol ... server="servlet" />
+web.xml：
+
+<servlet>
+         <servlet-name>dubbo</servlet-name>
+         <servlet-class>com.alibaba.dubbo.remoting.http.servlet.DispatcherServlet</servlet-class>
+         <load-on-startup>1</load-on-startup>
+</servlet>
+<servlet-mapping>
+         <servlet-name>dubbo</servlet-name>
+         <url-pattern>/*</url-pattern>
+</servlet-mapping>
+注意，如果使用servlet派发请求：
+
+协议的端口<dubbo:protocol port="8080" />必须与servlet容器的端口相同，
+协议的上下文路径<dubbo:protocol contextpath="foo" />必须与servlet应用的上下文路径相同。
+http://
+(+) (#)
+
+	采用Spring的HttpInvoker实现
+	2.3.0以上版本支持
+基于http表单的远程调用协议。参见：[HTTP协议使用说明]
+
+连接个数：多连接
+连接方式：短连接
+传输协议：HTTP
+传输方式：同步传输
+序列化：表单序列化
+适用范围：传入传出参数数据包大小混合，提供者比消费者个数多，可用浏览器查看，可用表单或URL传入参数，暂不支持传文件。
+适用场景：需同时给应用程序和浏览器JS使用的服务。
+(1) 约束：
+
+参数及返回值需符合Bean规范
+(2) 配置：
+dubbo.xml：
+
+<dubbo:protocol name="http" port="8080" />
+h4. Jetty Server: (default)
+<dubbo:protocol ... server="jetty" />
+h4. Servlet Bridge Server: (recommend)
+<dubbo:protocol ... server="servlet" />
+web.xml：
+
+<servlet>
+         <servlet-name>dubbo</servlet-name>
+         <servlet-class>com.alibaba.dubbo.remoting.http.servlet.DispatcherServlet</servlet-class>
+         <load-on-startup>1</load-on-startup>
+</servlet>
+<servlet-mapping>
+         <servlet-name>dubbo</servlet-name>
+         <url-pattern>/*</url-pattern>
+</servlet-mapping>
+注意，如果使用servlet派发请求：
+
+协议的端口<dubbo:protocol port="8080" />必须与servlet容器的端口相同，
+协议的上下文路径<dubbo:protocol contextpath="foo" />必须与servlet应用的上下文路径相同。
+webservice://
+(+) (#)
+
+	2.3.0以上版本支持。
+	基于CXF的frontend-simple和transports-http实现。
+	CXF是Apache开源的一个RPC框架：http://cxf.apache.org，由Xfire和Celtix合并而来 。
+依赖：
+
+<dependency>
+    <groupId>org.apache.cxf</groupId>
+    <artifactId>cxf-rt-frontend-simple</artifactId>
+    <version>2.6.1</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.cxf</groupId>
+    <artifactId>cxf-rt-transports-http</artifactId>
+    <version>2.6.1</version>
+</dependency>
+可以和原生WebService服务互操作，即：
+
+提供者用Dubbo的WebService协议暴露服务，消费者直接用标准WebService接口调用，
+或者提供方用标准WebService暴露服务，消费方用Dubbo的WebService协议调用。
+基于WebService的远程调用协议。
+
+连接个数：多连接
+连接方式：短连接
+传输协议：HTTP
+传输方式：同步传输
+序列化：SOAP文本序列化
+适用场景：系统集成，跨语言调用。
+(1) 约束：
+
+参数及返回值需实现Serializable接口
+参数尽量使用基本类型和POJO。
+(2) 配置：
+Define hessian protocol:
+
+<dubbo:protocol name="webservice" port="8080" server="jetty" />
+Set default protocol:
+
+<dubbo:provider protocol="webservice" />
+Set service protocol:
+
+<dubbo:service protocol="webservice" />
+Multi port:
+
+<dubbo:protocol id="webservice1" name="webservice" port="8080" />
+<dubbo:protocol id="webservice2" name="webservice" port="8081" />
+Directly provider:
+
+<dubbo:reference id="helloService" interface="HelloWorld" url="webservice://10.20.153.10:8080/com.foo.HelloWorld" />
+WSDL:
+
+http://10.20.153.10:8080/com.foo.HelloWorld?wsdl
+h4. Jetty Server: (default)
+<dubbo:protocol ... server="jetty" />
+h4. Servlet Bridge Server: (recommend)
+<dubbo:protocol ... server="servlet" />
+web.xml：
+
+<servlet>
+         <servlet-name>dubbo</servlet-name>
+         <servlet-class>com.alibaba.dubbo.remoting.http.servlet.DispatcherServlet</servlet-class>
+         <load-on-startup>1</load-on-startup>
+</servlet>
+<servlet-mapping>
+         <servlet-name>dubbo</servlet-name>
+         <url-pattern>/*</url-pattern>
+</servlet-mapping>
+注意，如果使用servlet派发请求：
+
+协议的端口<dubbo:protocol port="8080" />必须与servlet容器的端口相同，
+协议的上下文路径<dubbo:protocol contextpath="foo" />必须与servlet应用的上下文路径相同。
+thrift://
+(+) (#)
+
+	2.3.0以上版本支持。
+	Thrift说明
+Thrift是Facebook捐给Apache的一个RPC框架，参见：http://thrift.apache.org
+	dubbo thrift协议
+当前 dubbo 支持的 thrift 协议是对 thrift 原生协议的扩展，在原生协议的基础上添加了一些额外的头信息，比如service name，magic number等。使用dubbo thrift协议同样需要使用thrift的idl compiler编译生成相应的java代码，后续版本中会在这方面做一些增强。
+示例：https://github.com/alibaba/dubbo/tree/master/dubbo-rpc/dubbo-rpc-thrift/src/test/java/com/alibaba/dubbo/rpc/protocol/thrift/examples
+
+依赖：
+
+<dependency>
+    <groupId>org.apache.thrift</groupId>
+    <artifactId>libthrift</artifactId>
+    <version>0.8.0</version>
+</dependency>
+所有服务共用一个端口：(与原生Thrift不兼容)
+
+<dubbo:protocol name="thrift" port="3030" />
+Thrift不支持数据类型：
+
+null值 (不能在协议中传递null值)
+memcached://
+(+) (#)
+
+	2.3.0以上版本支持。
+	Memcached说明
+Memcached是一个高效的KV缓存服务器，参见：http://memcached.org/
+可以通过脚本或监控中心手工填写表单注册memcached服务的地址：
+
+RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
+Registry registry = registryFactory.getRegistry(URL.valueOf("zookeeper://10.20.153.10:2181"));
+registry.register(URL.valueOf("memcached://10.20.153.11/com.foo.BarService?category=providers&dynamic=false&application=foo&group=member&loadbalance=consistenthash"));
+然后在客户端使用时，不需要感知Memcached的地址：
+
+<dubbo:reference id="cache" interface="http://10.20.160.198/wiki/display/dubbo/java.util.Map" group="member" />
+或者，点对点直连：
+
+<dubbo:reference id="cache" interface="http://10.20.160.198/wiki/display/dubbo/java.util.Map" url="memcached://10.20.153.10:11211" />
+也可以使用自定义接口：
+
+<dubbo:reference id="cache" interface="com.foo.CacheService" url="memcached://10.20.153.10:11211" />
+方法名建议和memcached的标准方法名相同，即：get(key), set(key, value), delete(key)。
+
+如果方法名和memcached的标准方法名不相同，则需要配置映射关系：(其中"p:xxx"为spring的标准p标签)
+
+<dubbo:reference id="cache" interface="com.foo.CacheService" url="memcached://10.20.153.10:11211" p:set="putFoo" p:get="getFoo" p:delete="removeFoo" />
+redis://
+(+) (#)
+
+	2.3.0以上版本支持。
+	Redis说明
+Redis是一个高效的KV存储服务器，参见：http://redis.io
+可以通过脚本或监控中心手工填写表单注册redis服务的地址：
+
+RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
+Registry registry = registryFactory.getRegistry(URL.valueOf("zookeeper://10.20.153.10:2181"));
+registry.register(URL.valueOf("redis://10.20.153.11/com.foo.BarService?category=providers&dynamic=false&application=foo&group=member&loadbalance=consistenthash"));
+然后在客户端使用时，不需要感知Redis的地址：
+
+<dubbo:reference id="store" interface="http://10.20.160.198/wiki/display/dubbo/java.util.Map" group="member" />
+或者，点对点直连：
+
+<dubbo:reference id="store" interface="http://10.20.160.198/wiki/display/dubbo/java.util.Map" url="redis://10.20.153.10:6379" />
+也可以使用自定义接口：
+
+<dubbo:reference id="store" interface="com.foo.StoreService" url="redis://10.20.153.10:6379" />
+方法名建议和redis的标准方法名相同，即：get(key), set(key, value), delete(key)。
+
+如果方法名和redis的标准方法名不相同，则需要配置映射关系：(其中"p:xxx"为spring的标准p标签)
+
+<dubbo:reference id="cache" interface="com.foo.CacheService" url="memcached://10.20.153.10:11211" p:set="putFoo" p:get="getFoo" p:delete="removeFoo" />
+注册中心参考手册
+(+) (#)
+
+	推荐使用Zookeeper注册中心
+Multicast注册中心
+(+) (#)
+
+	不需要启动任何中心节点，只要广播地址一样，就可以互相发现
+	组播受网络结构限制，只适合小规模应用或开发阶段使用。
+	组播地址段: 224.0.0.0 - 239.255.255.255
+
+
+提供方启动时广播自己的地址。
+消费方启动时广播订阅请求。
+提供方收到订阅请求时，单播自己的地址给订阅者，如果设置了unicast=false，则广播给订阅者。
+消费方收到提供方地址时，连接该地址进行RPC调用。
+<dubbo:registry address="multicast://224.5.6.7:1234" />
+Or:
+
+<dubbo:registry protocol="multicast" address="224.5.6.7:1234" />
+为了减少广播量，Dubbo缺省使用单播发送提供者地址信息给消费者，
+如果一个机器上同时启了多个消费者进程，消费者需声明unicast=false，否则只会有一个消费者能收到消息：
+
+<dubbo:registry address="multicast://224.5.6.7:1234?unicast=false" />
+Or:
+
+<dubbo:registry protocol="multicast" address="224.5.6.7:1234">
+    <dubbo:parameter key="unicast" value="false" />
+</dubbo:registry>
+Zookeeper注册中心
+(+) (#)
+
+	建议使用dubbo-2.3.3以上版本的zookeeper注册中心客户端
+	Zookeeper说明
+Zookeeper是Apacahe Hadoop的子项目，是一个树型的目录服务，支持变更推送，适合作为Dubbo服务的注册中心，工业强度较高，可用于生产环境，并推荐使用，参见：http://zookeeper.apache.org
+	Zookeeper安装
+安装方式参见: Zookeeper安装手册，只需搭一个原生的Zookeeper服务器，并将Quick Start中Provider和Consumer里的conf/dubbo.properties中的dubbo.registry.addrss的值改为zookeeper://127.0.0.1:2181即可使用
+	可靠性声明
+阿里内部并没有采用Zookeeper做为注册中心，而是使用自己实现的基于数据库的注册中心，即：Zookeeper注册中心并没有在阿里内部长时间运行的可靠性保障，此Zookeeper桥接实现只为开源版本提供，其可靠性依赖于Zookeeper本身的可靠性。
+	兼容性声明
+因2.0.8最初设计的zookeeper存储结构不能扩充不同类型的数据，2.0.9版本做了调整，所以不兼容，需全部改用2.0.9版本才行，以后的版本会保持兼容2.0.9。
+2.2.0版本改为基于zkclient实现，需增加zkclient的依赖包，2.3.0版本增加了基于curator的实现，作为可选实现策略。
+
+
+流程说明：
+
+服务提供者启动时
+向/dubbo/com.foo.BarService/providers目录下写入自己的URL地址。
+服务消费者启动时
+订阅/dubbo/com.foo.BarService/providers目录下的提供者URL地址。
+并向/dubbo/com.foo.BarService/consumers目录下写入自己的URL地址。
+监控中心启动时
+订阅/dubbo/com.foo.BarService目录下的所有提供者和消费者URL地址。
+支持以下功能：
+
+当提供者出现断电等异常停机时，注册中心能自动删除提供者信息。
+当注册中心重启时，能自动恢复注册数据，以及订阅请求。
+当会话过期时，能自动恢复注册数据，以及订阅请求。
+当设置<dubbo:registry check="false" />时，记录失败注册和订阅请求，后台定时重试。
+可通过<dubbo:registry username="admin" password="1234" />设置zookeeper登录信息。
+可通过<dubbo:registry group="dubbo" />设置zookeeper的根节点，不设置将使用无根树。
+支持*号通配符<dubbo:reference group="*" version="*" />，可订阅服务的所有分组和所有版本的提供者。
+在provider和consumer中增加zookeeper客户端jar包依赖：
+
+<dependency>
+    <groupId>org.apache.zookeeper</groupId>
+    <artifactId>zookeeper</artifactId>
+    <version>3.3.3</version>
+</dependency>
+或直接下载：http://repo1.maven.org/maven2/org/apache/zookeeper/zookeeper
+
+支持zkclient和curator两种Zookeeper客户端实现：
+
+ZKClient Zookeeper Registry
+从2.2.0版本开始缺省为zkclient实现，以提升zookeeper客户端的健状性。
+
+	ZKClient是Datameer开源的一个Zookeeper客户端实现，开源比较早，参见：https://github.com/sgroschupf/zkclient
+缺省配置：
+
+<dubbo:registry ... client="zkclient" />
+或：
+
+dubbo.registry.client=zkclient
+或：
+
+zookeeper://10.20.153.10:2181?client=zkclient
+需依赖：
+
+<dependency>
+    <groupId>com.github.sgroschupf</groupId>
+    <artifactId>zkclient</artifactId>
+    <version>0.1</version>
+</dependency>
+或直接下载：http://repo1.maven.org/maven2/com/github/sgroschupf/zkclient
+
+Curator Zookeeper Registry
+从2.3.0版本开始支持可选curator实现。
+
+	Curator是Netflix开源的一个Zookeeper客户端实现，比较活跃，参见：https://github.com/Netflix/curator
+如果需要改为curator实现，请配置：
+
+<dubbo:registry ... client="curator" />
+或：
+
+dubbo.registry.client=curator
+或：
+
+zookeeper://10.20.153.10:2181?client=curator
+需依赖：
+
+<dependency>
+    <groupId>com.netflix.curator</groupId>
+    <artifactId>curator-framework</artifactId>
+    <version>1.1.10</version>
+</dependency>
+或直接下载：http://repo1.maven.org/maven2/com/netflix/curator/curator-framework
+
+Zookeeper单机配置:
+
+<dubbo:registry address="zookeeper://10.20.153.10:2181" />
+Or:
+
+<dubbo:registry protocol="zookeeper" address="10.20.153.10:2181" />
+Zookeeper集群配置:
+
+<dubbo:registry address="zookeeper://10.20.153.10:2181?backup=10.20.153.11:2181,10.20.153.12:2181" />
+Or:
+
+<dubbo:registry protocol="zookeeper" address="10.20.153.10:2181,10.20.153.11:2181,10.20.153.12:2181" />
+同一Zookeeper，分成多组注册中心:
+
+<dubbo:registry id="chinaRegistry" protocol="zookeeper" address="10.20.153.10:2181" group="china" />
+<dubbo:registry id="intlRegistry" protocol="zookeeper" address="10.20.153.10:2181" group="intl" />
+Redis注册中心
+(+) (#)
+
+	Redis说明
+Redis是一个高效的KV存储服务器，参见：http://redis.io
+	Redis安装
+安装方式参见: Redis安装手册，只需搭一个原生的Redis服务器，并将Quick Start中Provider和Consumer里的conf/dubbo.properties中的dubbo.registry.addrss的值改为redis://127.0.0.1:6379即可使用
+	Redis过期数据
+通过心跳的方式检测脏数据，服务器时间必须相同，并且对服务器有一定压力。
+	可靠性声明
+阿里内部并没有采用Redis做为注册中心，而是使用自己实现的基于数据库的注册中心，即：Redis注册中心并没有在阿里内部长时间运行的可靠性保障，此Redis桥接实现只为开源版本提供，其可靠性依赖于Redis本身的可靠性。
+	从2.1.0版本开始支持
+
+
+数据结构：
+
+使用Redis的Key/Map结构存储数据。
+主Key为服务名和类型。
+Map中的Key为URL地址。
+Map中的Value为过期时间，用于判断脏数据，脏数据由监控中心删除。(注意：服务器时间必需同步，否则过期检测会不准确)
+使用Redis的Publish/Subscribe事件通知数据变更。
+通过事件的值区分事件类型：register, unregister, subscribe, unsubscribe。
+普通消费者直接订阅指定服务提供者的Key，只会收到指定服务的register, unregister事件。
+监控中心通过psubscribe功能订阅/dubbo/*，会收到所有服务的所有变更事件。
+调用过程：
+
+服务提供方启动时，向Key:/dubbo/com.foo.BarService/providers下，添加当前提供者的地址。
+并向Channel:/dubbo/com.foo.BarService/providers发送register事件。
+服务消费方启动时，从Channel:/dubbo/com.foo.BarService/providers订阅register和unregister事件。
+并向Key:/dubbo/com.foo.BarService/providers下，添加当前消费者的地址。
+服务消费方收到register和unregister事件后，从Key:/dubbo/com.foo.BarService/providers下获取提供者地址列表。
+服务监控中心启动时，从Channel:/dubbo/*订阅register和unregister，以及subscribe和unsubsribe事件。
+服务监控中心收到register和unregister事件后，从Key:/dubbo/com.foo.BarService/providers下获取提供者地址列表。
+服务监控中心收到subscribe和unsubsribe事件后，从Key:/dubbo/com.foo.BarService/consumers下获取消费者地址列表。
+选项：
+
+可通过<dubbo:registry group="dubbo" />设置redis中key的前缀，缺省为dubbo。
+可通过<dubbo:registry cluster="replicate" />设置redis集群策略，缺省为failover。
+failover: 只写入和读取任意一台，失败时重试另一台，需要服务器端自行配置数据同步。
+replicate: 在客户端同时写入所有服务器，只读取单台，服务器端不需要同步，注册中心集群增大，性能压力也会更大。
+Config redis registry:
+
+<dubbo:registry address="redis://10.20.153.10:6379" />
+Or:
+
+<dubbo:registry address="redis://10.20.153.10:6379?backup=10.20.153.11:6379,10.20.153.12:6379" />
+Or:
+
+<dubbo:registry protocol="redis" address="10.20.153.10:6379" />
+Or:
+
+<dubbo:registry protocol="redis" address="10.20.153.10:6379,10.20.153.11:6379,10.20.153.12:6379" />
+Simple注册中心
+(+) (#)
+
+	Dogfooding
+注册中心本身就是一个普通的Dubbo服务，可以减少第三方依赖，使整体通讯方式一致。
+	适用性说明
+此SimpleRegistryService只是简单实现，不支持集群，可作为自定义注册中心的参考，但不适合直接用于生产环境。
+Export simple registry service:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsdhttp://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+ 
+    <!-- 当前应用信息配置 -->
+    <dubbo:application name="simple-registry" />
+ 
+    <!-- 暴露服务协议配置 -->
+    <dubbo:protocol port="9090" />
+ 
+    <!-- 暴露服务配置 -->
+    <dubbo:service interface="com.alibaba.dubbo.registry.RegistryService" ref="registryService" registry="N/A" ondisconnect="disconnect" callbacks="1000">
+        <dubbo:method name="subscribe"><dubbo:argument index="1" callback="true" /></dubbo:method>
+        <dubbo:method name="unsubscribe"><dubbo:argument index="1" callback="false" /></dubbo:method>
+    </dubbo:service>
+ 
+    <!-- 简单注册中心实现，可自行扩展实现集群和状态同步 -->
+    <bean id="registryService" class="com.alibaba.dubbo.registry.simple.SimpleRegistryService" />
+ 
+</beans>
+Reference the simple registry service:
+
+<dubbo:registry address="127.0.0.1:9090" />
+Or:
+
+<dubbo:service interface="com.alibaba.dubbo.registry.RegistryService" group="simple" version="1.0.0" ... >
+<dubbo:registry address="127.0.0.1:9090" group="simple" version="1.0.0" />
+Simple监控中心
+(+) (#)
+
+	监控中心也是一个标准的Dubbo服务，可以通过注册中心发现，也可以直连。
+	简易注册中心安装
+1.1 暴露一个简单监控中心服务到注册中心: (如果是用安装包，不需要自己写这个配置，如果是自己实现监控中心，则需要)
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsdhttp://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+     
+    <!-- 当前应用信息配置 -->
+    <dubbo:application name="simple-monitor" />
+     
+    <!-- 连接注册中心配置 -->
+    <dubbo:registry address="127.0.0.1:9090" />
+     
+    <!-- 暴露服务协议配置 -->
+    <dubbo:protocol port="7070" />
+     
+    <!-- 暴露服务配置 -->
+    <dubbo:service interface="com.alibaba.dubbo.monitor.MonitorService" ref="monitorService" />
+     
+    <bean id="monitorService" class="com.alibaba.dubbo.monitor.simple.SimpleMonitorService" />
+     
+</beans>
+1.2 通过注册中心发现监控中心服务:
+
+<dubbo:monitor protocol="registry" />
+或：
+
+dubbo.properties
+dubbo.monitor.protocol=registry
+2.1 暴露一个简单监控中心服务，但不注册到注册中心: (如果是用安装包，不需要自己写这个配置，如果是自己实现监控中心，则需要)
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsdhttp://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
+     
+    <!-- 当前应用信息配置 -->
+    <dubbo:application name="simple-monitor" />
+     
+    <!-- 暴露服务协议配置 -->
+    <dubbo:protocol port="7070" />
+     
+    <!-- 暴露服务配置 -->
+    <dubbo:service interface="com.alibaba.dubbo.monitor.MonitorService" ref="monitorService" registry="N/A" />
+     
+    <bean id="monitorService" class="com.alibaba.dubbo.monitor.simple.SimpleMonitorService" />
+     
+</beans>
+2.2 直连监控中心服务:
+
+<dubbo:monitor address="dubbo://127.0.0.1:7070/com.alibaba.dubbo.monitor.MonitorService" />
+或：
+
+<dubbo:monitor address="127.0.0.1:7070" />
+或：
+
+dubbo.properties
+dubbo.monitor.address=127.0.0.1:7070
+Telnet命令参考手册
+(+) (#)
+
+Dubbo2.0.5以上版本服务提供端口支持telnet命令，
+使用如：
+
+telnet localhost 20880
+
+或者：
+
+echo status | nc -i 1 localhost 20880
+
+telnet命令可以扩展，参见：扩展参考手册第6条。
+status命令所检查的资源也可以扩展，参见：扩展参考手册第5条。
+
+ls
+(list services and methods)
+
+ls
+
+显示服务列表。
+
+ls -l
+
+显示服务详细信息列表。
+
+ls XxxService
+
+显示服务的方法列表。
+
+ls -l XxxService
+
+显示服务的方法详细信息列表。
+
+ps
+(print server ports and connections)
+
+ps
+
+显示服务端口列表。
+
+ps -l
+
+显示服务地址列表。
+
+ps 20880
+
+显示端口上的连接信息。
+
+ps -l 20880
+
+显示端口上的连接详细信息。
+
+cd
+(change default service)
+
+cd XxxService
+
+改变缺省服务，当设置了缺省服务，凡是需要输入服务名作为参数的命令，都可以省略服务参数。
+
+cd /
+
+取消缺省服务。
+
+pwd
+(print working default service)
+
+pwd
+
+显示当前缺省服务。
+
+trace
+trace XxxService
+
+跟踪1次服务任意方法的调用情况。
+
+trace XxxService 10
+
+跟踪10次服务任意方法的调用情况。
+
+trace XxxService xxxMethod
+
+跟踪1次服务方法的调用情况
+
+trace XxxService xxxMethod 10
+
+跟踪10次服务方法的调用情况。
+
+count
+count XxxService
+
+统计1次服务任意方法的调用情况。
+
+count XxxService 10
+
+统计10次服务任意方法的调用情况。
+
+count XxxService xxxMethod
+
+统计1次服务方法的调用情况。
+
+count XxxService xxxMethod 10
+
+统计10次服务方法的调用情况。
+
+invoke
+invoke XxxService.xxxMethod({"prop": "value"})
+
+调用服务的方法。
+
+invoke xxxMethod({"prop": "value"})
+
+调用服务的方法(自动查找包含此方法的服务)。
+
+status
+status
+
+显示汇总状态，该状态将汇总所有资源的状态，当全部OK时则显示OK，只要有一个ERROR则显示ERROR，只要有一个WARN则显示WARN。
+
+status -l
+
+显示状态列表。
+
+log
+2.0.6以上版本支持
+
+log debug 
+修改dubbo logger的日志级别
+
+log 100
+查看file logger的最后100字符的日志
+
+help
+help
+
+显示telnet命帮助信息。
+
+help xxx
+
+显示xxx命令的详细帮助信息。
+
+clear
+clear
+
+清除屏幕上的内容。
+
+clear 100
+
+清除屏幕上的指定行数的内容。
+
+exit
+exit
+
+退出当前telnet命令行。
+
+Maven插件参考手册
+(+) (#)
+
+mvn dubbo:registry
+mvn dubbo:registry
+以缺省的9090端口启动一个简易注册中心
+
+mvn dubbo:registry -Dport=9099
+以指定的9099端口启动一个简易注册中心
+
+mvn dubbo:create
+(尚未发布)
+
+mvn dubbo:create
+生成demo服务提供者应用
+
+mvn dubbo:create -Dapplication=xxx -Dpackage=com.alibaba.xxx -Dservice=XxxService,YyyService -Dversion=1.0.0
+生成指定接口和版本的服务提供者应用
+
+服务化最佳实践
+(+) (#)
+
+分包
+建议将服务接口，服务模型，服务异常等均放在API包中，因为服务模型及异常也是API的一部分，
+同时，这样做也符合分包原则：重用发布等价原则(REP)，共同重用原则(CRP)
+如果需要，也可以考虑在API包中放置一份spring的引用配置，这样使用方，只需在Spring加载过程中引用此配置即可，
+配置建议放在模块的包目录下，以免冲突，如：com/alibaba/china/xxx/dubbo-reference.xml
+粒度
+服务接口尽可能大粒度，每个服务方法应代表一个功能，而不是某功能的一个步骤，否则将面临分布式事务问题，Dubbo暂未提供分布式事务支持。
+服务接口建议以业务场景为单位划分，并对相近业务做抽象，防止接口数量爆炸
+不建议使用过于抽象的通用接口，如：Map query(Map)，这样的接口没有明确语义，会给后期维护带来不便。
+版本
+每个接口都应定义版本号，为后续不兼容升级提供可能，如：<dubbo:service interface="com.xxx.XxxService" version="1.0" />
+建议使用两位版本号，因为第三位版本号通常表示兼容升级，只有不兼容时才需要变更服务版本。
+当不兼容时，先升级一半提供者为新版本，再将消费者全部升为新版本，然后将剩下的一半提供者升为新版本。
+兼容性
+服务接口增加方法，或服务模型增加字段，可向后兼容，删除方法或删除字段，将不兼容，枚举类型新增字段也不兼容，需通过变更版本号升级。
+各协议的兼容性不同，参见： 服务协议
+枚举值
+如果是完备集，可以用Enum，比如：ENABLE, DISABLE。
+如果是业务种类，以后明显会有类型增加，不建议用Enum，可以用String代替。
+如果是在返回值中用了Enum，并新增了Enum值，建议先升级服务消费方，这样服务提供方不会返回新值。
+如果是在传入参数中用了Enum，并新增了Enum值，建议先升级服务提供方，这样服务消费方不会传入新值。
+序列化
+服务参数及返回值建议使用POJO对象，即通过set,get方法表示属性的对象。
+服务参数及返回值不建议使用接口，因为数据模型抽象的意义不大，并且序列化需要接口实现类的元信息，并不能起到隐藏实现的意图。
+服务参数及返回值都必需是byValue的，而不能是byRef的，消费方和提供方的参数或返回值引用并不是同一个，只是值相同，Dubbo不支持引用远程对象。
+异常
+建议使用异常汇报错误，而不是返回错误码，异常信息能携带更多信息，以及语义更友好，
+如果担心性能问题，在必要时，可以通过override掉异常类的fillInStackTrace()方法为空方法，使其不拷贝栈信息，
+查询方法不建议抛出checked异常，否则调用方在查询时将过多的try...catch，并且不能进行有效处理，
+服务提供方不应将DAO或SQL等异常抛给消费方，应在服务实现中对消费方不关心的异常进行包装，否则可能出现消费方无法反序列化相应异常。
+调用
+不要只是因为是Dubbo调用，而把调用Try-Catch起来。Try-Catch应该加上合适的回滚边界上。
+对于输入参数的校验逻辑在Provider端要有。如有性能上的考虑，服务实现者可以考虑在API包上加上服务Stub类来完成检验。
+推荐用法
+(+) (#)
+
+在Provider上尽量多配置Consumer端属性
+原因如下：
+
+作服务的提供者，比服务使用方更清楚服务性能参数，如调用的超时时间，合理的重试次数，等等
+在Provider配置后，Consumer不配置则会使用Provider的配置值，即Provider配置可以作为Consumer的缺省值。
+否则，Consumer会使用Consumer端的全局设置，这对于Provider不可控的，并且往往是不合理的。
+PS: 配置的覆盖规则：1) 方法级配置别优于接口级别，即小Scope优先 2) Consumer端配置 优于 Provider配置 优于 全局配置，最后是Dubbo Hard Code的配置值（见配置文档）
+配置的覆盖规则详见： Dubbo配置参考手册
+Provider上尽量多配置Consumer端的属性，让Provider实现者一开始就思考Provider服务特点、服务质量的问题。
+
+示例：
+
+<dubbo:service interface="com.alibaba.hello.api.HelloService" version="1.0.0" ref="helloService"
+    timeout="300" retry="2" loadbalance="random" actives="0"
+/>
+ 
+<dubbo:service interface="com.alibaba.hello.api.WorldService" version="1.0.0" ref="helloService"
+    timeout="300" retry="2" loadbalance="random" actives="0" >
+    <dubbo:method name="findAllPerson" timeout="10000" retries="9" loadbalance="leastactive" actives="5" />
+<dubbo:service/>
+在Provider可以配置的Consumer端属性有：
+
+timeout，方法调用超时
+retries，失败重试次数，缺省是2（表示加上第一次调用，会调用3次）
+loadbalance，负载均衡算法（有多个Provider时，如何挑选Provider调用），缺省是随机（random）。
+还可以有轮训(roundrobin)、最不活跃优先（leastactive，指从Consumer端并发调用最好的Provider，可以减少的反应慢的Provider的调用，因为反应更容易累积并发的调用）
+actives，消费者端，最大并发调用限制，即当Consumer对一个服务的并发调用到上限后，新调用会Wait直到超时。
+在方法上配置（dubbo:method ）则并发限制针对方法，在接口上配置（dubbo:service），则并发限制针对服务。
+详细配置说明参见：Dubbo配置参考手册 
+
+Provider上配置合理的Provider端属性
+<dubbo:protocol threads="200" />
+ 
+<dubbo:service interface="com.alibaba.hello.api.HelloService" version="1.0.0" ref="helloService"
+    executes="200" >
+    <dubbo:method name="findAllPerson" executes="50" />
+</dubbo:service>
+Provider上可以配置的Provider端属性有：
+
+threads，服务线程池大小
+executes，一个服务提供者并行执行请求上限，即当Provider对一个服务的并发调用到上限后，新调用会Wait（Consumer可能到超时）。在方法上配置（dubbo:method ）则并发限制针对方法，在接口上配置（dubbo:service），则并发限制针对服务。
+配置上管理信息
+目前有负责人信息和组织信息（用于区分站点）。
+
+有问题时便于的找到服务的负责人，至少写两个人以便备份。
+
+负责人和组织的信息可以在注册中心的上看到。
+
+示例：
+
+应用配置负责人、组织
+<dubbo:application owner=”ding.lid,william.liangf” organization=”intl” />
+service配置负责人
+<dubbo:service owner=”ding.lid,william.liangf” />
+reference配置负责人
+<dubbo:reference owner=”ding.lid,william.liangf” />
+dubbo:service、dubbo:reference没有配置负责人，则使用dubbo:application设置的负责人。
+
+配置上Dubbo缓存文件
+配置方法如下：
+
+提供者列表缓存文件
+<dubbo:registry file=”${user.home}/output/dubbo.cache” />
+注意：
+
+文件的路径，应用可以根据需要调整，保证这个文件不会在发布过程中被清除。
+如果有多个应用进程注意不要使用同一个文件，避免内容被覆盖。
+这个文件会缓存：
+
+注册中心的列表
+服务提供者列表
+有了这项配置后，当应用重启过程中，Dubbo注册中心不可用时则应用会从这个缓存文件读取服务提供者列表的信息，进一步保证应用可靠性。
+
+监控配置
+1. 使用固定端口暴露服务，而不要使用随机端口
+这样在注册中心推送有延迟的情况下，消费者通过缓存列表也能调用到原地址，保证调用成功。
+
+3. 使用Dragoon的http监控项监控注册中心上服务提供方
+Dragoon监控服务在注册中心上的状态：http://dubbo-reg1.hst.xyi.cn.alidc.net:8080/status/com.alibaba.morgan.member.MemberService:1.0.5，确保注册中心上有该服务的存在。
+
+4. 服务提供方，使用Dragoon的telnet或shell监控项
+监控服务提供者端口状态：echo status | nc --i 1 20880 | grep OK | wc --l，其中的20880为服务端口
+
+5. 服务消费方，通过将服务强制转型为EchoService，并调用$echo()测试该服务的提供者是可用
+如 assertEqauls(“OK”, ((EchoService)memberService).$echo(“OK”));
+
+不要使用dubbo.properties文件配置，推荐使用对应XML配置
+Dubbo2中所有的配置项都可以Spring配置中，并且可以针对单个服务配置。
+
+# 如完全不配置使用Dubbo缺省值，参见Dubbo配置参考手册中的说明。
+
+在Dubbo1中需要在dubbo.properties文件中的配置项，Dubbo2中配置示例如下：
+
+1. 应用名 
+<dubbo:application name="myalibaba" >
+对应dubbo.properties中的Key名dubbo.application.name
+
+2. 注册中心地址
+<dubbo:registry address="11.22.33.44:9090" >
+对应dubbo.properties中的Key名dubbo.registry.address
+
+3. 调用超时
+可以在多个配置项设置超时，由上至下覆盖（即上面的优先），示例如下：
+
+# 其它的参数（retries、loadbalance、actives等）的覆盖策略也一样。
+
+提供者端特定方法的配置
+
+<dubbo:service interface="com.alibaba.xxx.XxxService" >
+    <dubbo:method name="findPerson" timeout="1000" />
+</dubbo:service>
+提供者端特定接口的配置
+
+<dubbo:service interface="com.alibaba.xxx.XxxService" timeout="200" />
+# timeout可以在多处设置，配置项及覆盖规则详见： Dubbo配置参考手册
+
+全局配置项值，对应dubbo.properties中的Key名dubbo.service.invoke.timeout
+
+5. 服务提供者协议、服务的监听端口
+<dubbo:protocol name="dubbo" port="20880" />
+对应dubbo.properties中的Key名dubbo.service.protocol、dubbo.service.server.port
+
+4. 服务线程池大小
+<dubbo:protocol threads="100" />
+对应dubbo.properties中的Key名dubbo.service.max.thread.threads.size
+
+6. 消费者启动时，没有提供者是否抛异常Fast-Fail
+<dubbo:reference interface="com.alibaba.xxx.XxxService" check="false" />
+对应dubbo.properties中的Key名alibaba.intl.commons.dubbo.service.allow.no.provider
+
+容量规划
+(+) (#)
+
+以下数据供参考：
+
+使用Dubbo的会员服务项目
+每天接收4亿次远程调用
+使用12台网站标配机器提供服务(8核CPU,8G内存)
+平均负载在1以下(对于8核CPU负载很低)
+平均响应时间2.3到2.5毫秒，网络开销约占1.5到1.6毫秒(和数据包大小有关)
+使用Dubbo的产品授权服务项目
+每天接收3亿次远程调用
+使用8台网站标配机器提供服务(8核CPU,8G内存)
+平均负载在1以下(对于8核CPU负载很低)
+平均响应时间1.4到2.8毫秒，网络开销约占1.0到1.1毫秒(和数据包大小有关)
+基准测试工具包
+(+) (#)
+
+下载benchmark压缩包，并解压
+dubbo.benchmark-2.0.14.tar.gz
+
+阅读ReadMe.txt（内容如下，请以压缩包内的为准）
+一、新建一个benchmark工程，如demo.benchmark
+二、导入自己服务的接口api包和dubbo.benchmark.jar(解压dubbo.benchmark.tar.gz，在lib目录下)
+三、新建一个类，实现AbstractClientRunnable
+a、实现父类的构造函数
+b、实现invoke方法，通过serviceFactory创建本地接口代理，并实现自己的业务逻辑，如下
+
+public Object invoke(ServiceFactory serviceFactory) {
+        DemoService demoService = (DemoService) serviceFactory.get(DemoService.class);
+        return demoService.sendRequest("hello");
+    }
+四、将自己的benchmark工程打成jar包,如demo.benchmark.jar
+五、将demo.benchmark.jar 和服务的api包放到dubbo.benchmark/lib目录下
+六、配置duubo.properties
+七、运行run.bat(windows)或run.sh(linux)
+
+如想测试dubbo的不同版本，直接替换lib下的dubbo的jar包即可。
+
+性能测试报告
+(+) (#)
+
+测试说明
+a、本次性能测试，测试了dubbo2.0所有支持的协议在不同大小和数据类型下的表现，并与dubbo1.0进行了对比。
+
+b、整体性能相比1.0有了提升，平均提升10%，使用dubbo2.0新增的dubbo序列化还能获得10%~50%的性能提升，详见下面的性能数据。
+
+c、稳定性测试中由于将底层通信框架从mina换成netty，old区对象的增长大大减少，50小时运行，增长不到200m，无fullgc。（可以确认为mina在高并发下的设计缺陷）
+
+d、存在的问题：在50k数据的时候2.0性能不如1.0，怀疑可能是缓冲区设置的问题，下版本会进一步确认。 
+
+测试环境
+2.1 硬件部署与参数调整
+主机/ip
+硬件配置
+操作系统及参数调整
+
+10.20.153.11	 	机型	Tecal BH620
+CPU	model name : Intel(R) Xeon(R) CPU           E5520  @ 2.27GHz cache size : 8192 KB processor_count : 16
+内存	Total System Memory: 6G Hardware Memory Info:  Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown
+网络	Total System Memory: 6G Hardware Memory Info:  Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown
+磁盘	/dev/sda: 597.9 GB,	 	2.6.18-128.el5xen x86_64
+10.20.153.10	 	机型	Tecal BH620
+CPU	model name : Intel(R) Xeon(R) CPU           E5520  @ 2.27GHz cache size : 8192 KB processor_count : 16
+内存	Total System Memory: 6G Hardware Memory Info:  Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown Size: 4096MB, 1066MHz(0.9ns) Size: NoModule, Unknown
+网络	eth0: Link is up at 1000 Mbps, full duplex. peth0: Link is up at 1000 Mbps, full duplex.
+磁盘	/dev/sda: 597.9 GB,	 	2.6.18-128.el5xen x86_64
+
+
+2.2 软件架构
+主机/ip
+软件名称及版本
+关键参数
+
+ 	java version "1.6.0_18" Java(TM) SE Runtime Environment (build 1.6.0_18-b07) Java HotSpot(TM) 64-Bit Server VM (build 16.0-b13, mixed mode)	-server -Xmx2g -Xms2g -Xmn256m -XX:PermSize=128m -Xss256k -XX:+DisableExplicitGC -XX:+UseConcMarkSweepGC -XX:+CMSParallelRemarkEnabled -XX:+UseCMSCompactAtFullCollection -XX:LargePageSizeInBytes=128m -XX:+UseFastAccessorMethods -XX:+UseCMSInitiatingOccupancyOnly -XX:CMSInitiatingOccupancyFraction=70
+ 	jboss-4.0.5.GA	 
+ 	httpd-2.0.61	KeepAlive On MaxKeepAliveRequests 100000 KeepAliveTimeout 180 MaxRequestsPerChild 1000000 <IfModule worker.c>         StartServers 5         MaxClients 1024         MinSpareThreads 25         MaxSpareThreads 75         ThreadsPerChild 64         ThreadLimit 128         ServerLimit 16 </IfModule>
+
+
+测试目的
+
+
+3.1 期望性能指标(量化)
+场景名称
+对应指标名称
+期望值范围
+实际值
+是否满足期望(是/否)
+
+1k数据 
+响应时间 
+0.9ms 
+0.79ms 
+是 
+1k数据 
+TPS 
+10000 
+11994 
+是 
+
+
+3.2 期望运行状况(非量化，可选)
+2.0性能不低于1.0,2.0和1.0互调用的性能无明显下降。 除了50k string其余皆通过
+JVM内存运行稳定，无OOM，堆内存中无不合理的大对象的占用。通过
+CPU、内存、网络、磁盘、文件句柄占用平稳。通过
+无频繁线程锁，线程数平稳。通过
+业务线程负载均衡。通过
+ 
+
+测试脚本
+1、性能测试场景（10并发）
+
+a、传入1kString，不做任何处理，原样返回
+
+b、传入50kString，不做任何处理，原样返回
+
+c、传入200kString，不做任何处理，原样返回
+
+d、传入1k pojo（嵌套的复杂person对象），不做任何处理，原样返回
+
+上述场景在dubbo1.0\dubbo2.0(hessian2序列化)\dubbo2.0(dubbo序列化)\rmi\hessian3.2.0\http(json序列化)进行10分钟的性能测试。 主要考察序列化和网络IO的性能，因此服务端无任何业务逻辑。取10并发是考虑到http协议在高并发下对CPU的使用率较高可能会先打到瓶颈。 
+
+2、并发场景（20并发）
+
+传入1kString，在服务器段循环1w次，每次重新生成一个随机数然后进行拼装。
+
+考察业务线程是否能够分配到每个CPU上。 
+
+3、稳定性场景（20并发）
+
+同时调用1个参数为String（5k）方法，1个参数为person对象的方法，1个参数为map（值为3个person）的方法，持续运行50小时。 
+
+4、高压力场景（20并发）
+
+在稳定性场景的基础上，将提供者和消费者布置成均为2台（一台机器2个实例），且String的参数从20byte到200k，每隔10分钟随机变换。 
+
+测试结果
+5.1 场景名称：pojo 场景
+ 	TPS成功平均值 
+响应时间成功平均值(ms) 
+dubbo1 
+（hessian2序列化+mina） 
+10813.5 
+0.9 
+dubbo2 
+(hessian2序列化+netty) 
+11994 
+0.79 
+dubbo2 
+(dubbo序列化+netty) 
+13620 
+0.67 
+rmi 
+2461.79 
+4 
+hessian 
+2417.7 
+4.1 
+http（json序列化） 
+8179.08 
+1.15 
+2.0和1.0默认 
+对比百分比 
+10.92 
+-12.22 
+dubbo序列化相比hessian2序列化百分比 
+13.56 
+-15.19 
+ 
+
+5.2 场景名称：1k string 场景  |
+　 
+TPS成功平均值 
+响应时间成功平均值(ms) 
+dubbo1 
+（hessian2序列化+mina） 
+11940 
+0.8 
+dubbo2 
+(hessian2序列化+netty) 
+14402 
+0.64 
+dubbo2 
+(dubbo序列化+netty) 
+15096 
+0.6 
+rmi 
+11136.02 
+0.81 
+hessian 
+11426.83 
+0.79 
+http（json序列化） 
+8919.27 
+1.04 
+2.0和1.0默认 
+对比百分比 
+20.62 
+-20.00 
+dubbo序列化相比hessian2序列化百分比 
+4.82 
+-6.25 
+ 
+
+5.3 场景名称：50k string场景  |
+　 
+TPS成功平均值 
+响应时间成功平均值(ms) 
+dubbo1 
+（hessian2序列化+mina） 
+1962.7 
+5.1 
+dubbo2 
+(hessian2序列化+netty) 
+1293 
+5.03 
+dubbo2 
+(dubbo序列化+netty) 
+1966 
+7.68 
+rmi 
+3349.88 
+2.9 
+hessian 
+1925.33 
+5.13 
+http（json序列化） 
+3247.1 
+3 
+2.0和1.0默认 
+对比百分比 
+-34.12 
+-1.37 
+dubbo序列化相比hessian2序列化百分比 
+52.05 
+52.68 
+ 
+
+5.4 场景名称：200k string 场景  |
+ 	TPS成功平均值 
+响应时间成功平均值(ms) 
+dubbo1 
+（hessian2序列化+mina） 
+324.2 
+30.8 
+dubbo2 
+(hessian2序列化+netty) 
+362.92 
+27.49 
+dubbo2 
+(dubbo序列化+netty) 
+569.5 
+17.51 
+rmi 
+1031.28 
+9.61 
+hessian 
+628.06 
+15.83 
+http（json序列化） 
+1011.97 
+9.79 
+2.0和1.0默认 
+对比百分比 
+11.94 
+-10.75 
+dubbo序列化相比hessian2序列化百分比 
+56.92 
+-36.30 
+ 
+
+测试分析
+
+
+6.1 性能分析评估
+  Dubbo2.0的性能测试结论为通过，从性能、内存占用和稳定性上都有了提高和改进。由其是内存管理由于将mina换成netty，大大减少了1.0版本在高并发大数据下的内存大锯齿。如下图：
+
+6.2 性能对比分析(新旧环境、不同数据量级等)
+Dubbo2.0相比较Dubbo1.0（默认使用的都是hessian2序列化）性能均有提升（除了50k String），详见第五章的性能数据。
+
+出于兼容性考虑默认的序列化方式和1.0保持一致使用hessian2，如对性能有更高要求可以使用dubbo序列化，由其是在处理复杂对象时，在大数据量下能获得50%的提升（但此时已不建议使用Dubbo协议）。
+
+Dubbo的设计目的是为了满足高并发小数据量的rpc调用，在大数据量下的性能表现并不好，建议使用rmi或http协议。
+
+6.3 测试局限性分析（可选）
+本次性能测试考察的是dubbo本身的性能，实际使用过程中的性能有待应用来验证。
+
+由于dubbo本身的性能占用都在毫秒级，占的基数很小，性能提升可能对应用整体的性能变化不大。
+
+由于邮件篇幅所限没有列出所有的监控图，如需获得可在大力神平台上查询。
+
+测试覆盖率报告
+(+) (#)
+
+统计于 2012-02-03 (2.0.12)
+
+
+
+
+
+
+
+Labels:
+None
+19 Child Pages Reorder Pages
+Page: API Reference-zh
+Page: Benchmark Test Toolkit-zh
+Page: Capacity Estimated-zh
+Page: Code Coverage Report-zh
+Page: Configs-zh
+Page: Configuration Reference-zh
+Page: Dependencies-zh
+Page: Examples-zh
+Page: Getting Started-zh
+Page: Maturity-zh
+Page: Maven Plugin Reference-zh
+Page: Performance Test Report-zh
+Page: Protocol Reference-zh
+Page: Quick Start-zh
+Page: Recommended Usage-zh
+Page: Registry Reference-zh
+Page: Serialization Issues-zh
+Page: Service Best Practices-zh
+Page: Telnet Command Reference-zh
+33 Comments comments.show.hide
+User icon: Anonymous 四月 26, 2012
+Anonymous
+不晓得你们是拿什么测的，我的小PC测试jdk rmi。1kb字符串测试结果如下：
+TPS:61840，我的服务也是在本机的，没有走网络。
+
+服务器我也测过，byte[1024]大概在50632.94TPS，瓶颈是咱的千兆网卡，而不是协议。而你们测出来的是1W左右的TPS...
+不晓得你们是用的Spring配置的Rmi吗，那个有性能Bug。
+
+我的服务器空请求RMI是20W的TPS,Jetty Htpp是2.5WTPS。RMI跟HTTP根本不是一个级别的。你们的Http json竟然比RMI高那么多，匪夷所思。
+Java序列化跟FastJson的POJO序列化性能对比我也做过，FastJson要差一大截呀： http://www.iteye.com/topic/1113183?page=7 (见huhang1986的回帖)
+
+我的测试工具在这里：http://code.google.com/p/xiaohanghu-stress-tester/
+测试详细结果：
+=========================================================
+jdk rmi test result:
+Service result:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Service Name:	
+Concurrency Level:	100
+Time taken for tests:	323.41052 ms
+Complete Requests:	20000
+Failed Requests:	0
+Requests per second:	61840.906
+Time per request:	0.63578355 ms
+Shortest request:	0.079317 ms
+Percentage of the requests served within a certain time (ms)
+50%	0.108318
+66%	0.126821
+75%	0.14599
+80%	0.169226
+90%	0.708724
+95%	2.524907
+98%	8.090869
+99%	12.26876
+100%	79.32993 (longest request)
+
+Permalink
+Reply
+User icon: Anonymous 四月 28, 2012
+Anonymous
+1w的tps是在默认单连接的情况下，如果开启了多连接tps可以达到12w。这个性能数据有些旧了，5.1回来我更新下。
+fastjson的性能在https://github.com/eishay/jvm-serializers/ 上的结果还是有较大的优势的。
+
+Permalink
+Reply
+User icon: Anonymous 六月 20, 2012
+Anonymous
+分组聚合里面的 例子写的好像不对
+
+<dubbo:reference interface="com.xxx.MenuService" group="*">
+<dubbo:method name="getMenuItems" merger="true" />
+</dubbo:service>
+
+下面的</dubbo:service> 应该是</dubbo:reference>，照上面的办法试了，也试了自己写merger，都不能用，返回的始终是一台机器的结果。能不能有个例子。这样的配置 好像不能用，我是配置在consumer.xml里的
+
+Permalink
+Reply
+User icon: Anonymous 七月 25, 2012
+Anonymous
+问题一：按用户指南配置的，架包也是下载默认的，启动时一直显示Soap 1.1 endpoint already registered on address /com.alibaba.dubbo.demo.provider.DemoWebService 的错误，不知道是哪配置错了。
+
+问题二：服务端通过webservice方式启动后，消费者直接用标准WebService接口调用。这里的本地路径是不是“http:\\127.0.0.1：8081\demoWebService” ?
+
+在dubbo-demo-provider.xml文件中配置
+
+<!-- 使用zk广播注册中心暴露服务地址 -->
+<dubbo:registry address="zookeeper://127.0.0.1:2181" />
+
+<!-- 用webservice协议在8081端口暴露服务 -->
+<dubbo:protocol name="webservice" port="8081" server="jetty" />
+
+<bean id="demoWebService" class="com.alibaba.dubbo.demo.provider.DemoWebServiceImpl" />
+
+<dubbo:service interface="com.alibaba.dubbo.demo.provider.DemoWebService" ref="demoWebService" />
+
+启动后提示错误：
+2012-7-25 16:53:11 org.apache.cxf.service.factory.ReflectionServiceFactoryBean buildServiceFromClass
+信息: Creating Service
+
+Unknown macro: {http}
+DemoWebService from class com.alibaba.dubbo.demo.provider.DemoWebService
+2012-7-25 16:53:11 org.apache.cxf.endpoint.ServerImpl initDestination
+信息: Setting the server's publish address to be /com.alibaba.dubbo.demo.provider.DemoWebService
+2012-07-25 16:53:11,577 ERROR [main] [FailbackRegistry.java:232] - [DUBBO] Failed to notify for subscribe provider://192.168.1.200:8081/com.alibaba.dubbo.demo.provider.DemoWebService?anyhost=true&application=demo-service-app&category=configurators&check=false&dubbo=2.3.1&interface=com.alibaba.dubbo.demo.provider.DemoWebService&methods=sayHello1&pid=14196&server=jetty&side=provider&timestamp=1343206383871, waiting for retry, cause: Soap 1.1 endpoint already registered on address /com.alibaba.dubbo.demo.provider.DemoWebService, dubbo version: 2.3.1, current host: 192.168.1.200
+java.lang.RuntimeException: Soap 1.1 endpoint already registered on address /com.alibaba.dubbo.demo.provider.DemoWebService
+at org.apache.cxf.binding.soap.SoapBindingFactory.addListener(SoapBindingFactory.java:862)
+at org.apache.cxf.endpoint.ServerImpl.start(ServerImpl.java:131)
+
+Permalink
+Reply
+User icon: Anonymous 八月 17, 2012
+Anonymous
+如何进行服务编排？有没有对应的示例？服务提供者如何写组合服务的脚本，服务调用者如何调用？编排的引擎是什么？
+
+Permalink
+Reply
+ User icon: ding.lid 十一月 08, 2012
+李 鼎
+这个目前版本（2.5）中还没有实现。可以通过第三方来实现。
+
+Permalink
+Reply
+User icon: Anonymous 八月 21, 2012
+Anonymous
+如果模型里面有UUID字段，Hessian反序列化的时会抛出空指针异常,我们通过增加UUID的序列化器解决，建议框架默认增加此功能
+ExtSerializerFactory factory = new ExtSerializerFactory();
+factory.addDeserializer(UUID.class, new UUIDDeserializer());
+factory.addSerializer(UUID.class, new UUIDSerializer());
+
+Permalink
+Reply
+User icon: Anonymous 十一月 06, 2012
+Anonymous
+为什么管理员端禁用了服务后，服务消费者仍然能接入服务。
+禁用后，服务提供方被调用时，出现异常如下：
+16:22:52.782 [31173113@qtp-9815532-195] DEBUG org.mortbay.log - EXCEPTION 
+java.io.IOException: 您的主机中的软件中止了一个已建立的连接。
+at sun.nio.ch.SocketDispatcher.read0(Native Method) ~[na:1.6.0\_10\-rc2]
+at sun.nio.ch.SocketDispatcher.read(SocketDispatcher.java:25) ~[na:1.6.0\_10\-rc2]
+at sun.nio.ch.IOUtil.readIntoNativeBuffer(IOUtil.java:233) ~[na:1.6.0\_10\-rc2]
+at sun.nio.ch.IOUtil.read(IOUtil.java:206) ~[na:1.6.0\_10\-rc2]
+at sun.nio.ch.SocketChannelImpl.read(SocketChannelImpl.java:236) ~[na:1.6.0\_10\-rc2]
+at org.mortbay.io.nio.ChannelEndPoint.fill(ChannelEndPoint.java:132) ~[jetty\-6.1.26.jar:6.1.26]
+at org.mortbay.jetty.HttpParser.parseNext(HttpParser.java:290) [jetty\-6.1.26.jar:6.1.26]
+at org.mortbay.jetty.HttpParser.parseAvailable(HttpParser.java:212) [jetty\-6.1.26.jar:6.1.26]
+at org.mortbay.jetty.HttpConnection.handle(HttpConnection.java:404) [jetty\-6.1.26.jar:6.1.26]
+at org.mortbay.io.nio.SelectChannelEndPoint.run(SelectChannelEndPoint.java:410) [jetty\-6.1.26.jar:6.1.26]
+at org.mortbay.thread.QueuedThreadPool$PoolThread.run(QueuedThreadPool.java:582) [jetty\-util\-6.1.26.jar:6.1.26]
+16:22:52.783 [31173113@qtp-9815532-195] DEBUG org.mortbay.log - EOF
+
+Permalink
+Reply
+User icon: Anonymous 十一月 16, 2012
+Anonymous
+用户手册我看了好几遍,都没能找到使用HTTP协议的具体操作.
+我们当前已经存在一个提供HTTP服务的服务端,该服务器可以提供我们所需的所有操作.
+现在需要提供集群管理,该HTTP服务端如何接入到DUBBO中
+我按照Hessian的样子写了一个接口Business,提供方法String getResult(String requestStr)
+在服务端实现了一个类public class BusinessImplServlet extends HessianServlet implements Business
+现在问题是这个服务端是独立运行在TOMCAT上的,怎么和DUBBO结合在一起
+测试客户端使用API的方式实现的
+调用方式和其他协议的调用方是一样的,调用方是否需要有特殊配置来适应该协议.
+谢谢
+
+Permalink
+Reply
+User icon: Anonymous 十二月 03, 2012
+Anonymous
+请问一下，消费者可以使用.NET吗？
+
+Permalink
+Reply
+User icon: Anonymous 十二月 10, 2012
+Anonymous
+您好，我们现在正用贵公司的DUBBO，有个问题希望请教下。问题是这样的：我们需要根据代码逻辑的不同参数调用不同的提供者，但是当我用实例代码把路由规则写入注册中心（zookeeper）以后，管理页面中路由规则页面报错，我想知道路由规则存放在那里的呢。
+
+Permalink
+Reply
+User icon: Anonymous 三月 26, 2013
+Anonymous
+同问，同一个消费根据不同的参数去调用不同的提供者
+
+Permalink
+Reply
+User icon: Anonymous 十二月 13, 2012
+Anonymous
+你好！现在dubbo里面thrift做服务端,用thrift原生client是否支持调用？
+
+Permalink
+Reply
+User icon: Anonymous 一月 05, 2013
+Anonymous
+哪位大师给我解释一下，
+<dubbo:reference url="dubbo://ip:port"/>
+采用直连方式的时候，这个标签的url中，可以写两个IP和端口么，即连多个地址？
+
+Permalink
+Reply
+User icon: Anonymous 一月 06, 2013
+Anonymous
+应该类似这样
+url="dubbo://10.10.224.193:36069;dubbo://10.10.224.194:36069"
+而不是：url="dubbo://ip:port,ip:port"
+
+Permalink
+Reply
+ User icon: bigben 一月 07, 2013
+alex.liang
+全局设置开启令牌验证：<dubbo:provider interface="com.foo.BarService" token="true" />
+这句话是不是错了dubbo:provider元素没有interface属性吧
+
+Permalink
+Reply
+ User icon: bigben 一月 09, 2013
+alex.liang
+String clientIP = RpcContext.getContext().getRemoteHost(); // 获取调用方IP地址
+
+如果客户端与服务器不在同一个网段时有问题的
+
+Permalink
+Reply
+User icon: Anonymous 一月 17, 2013
+Anonymous
+本地存根那个部分的示例代码
+
+BarServiceStub.java
+package com.foo
+public class BarServiceStub implements BarService {
+  
+    private final BarService barService;
+  
+    // 构造函数传入真正的远程代理对象
+    public (BarService barService) {
+        this.barService = barService;
+    }
+ 
+}
+中的构造函数写的不正确吧。感觉应该是
+
+BarServiceStub.java
+package com.foo
+public class BarServiceStub implements BarService {
+  
+    private final BarService barService;
+  
+    // 构造函数传入真正的远程代理对象
+    public BarServiceStub(BarService barService) {
+        this.barService = barService;
+    }
+ 
+}
+另外如何注册成本wiki是否对外开放。可否自由注册！谢谢
+
+Permalink
+Reply
+User icon: Anonymous 一月 17, 2013
+Anonymous
+第一次使用,出现点问题.麻烦看下,谢谢.
+Exception: 下面这段信息会一直刷屏.
+
+[WARN] - 2013-01-17 16:35:29,272 : Session 0x0 for server null, unexpected error, closing socket connection and attempting reconnect (org.apache.zookeeper.ClientCnxn$SendThread:run-ClientCnxn.java:1161) 
+java.net.ConnectException: Connection refused: no further information
+at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:574)
+at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1119)
+[INFO] - 2013-01-17 16:35:30,651 : Opening socket connection to server 192.168.10.13/192.168.10.13:2181 (org.apache.zookeeper.ClientCnxn$SendThread:startConnect-ClientCnxn.java:1041) 
+[WARN] - 2013-01-17 16:35:31,652 : Session 0x0 for server null, unexpected error, closing socket connection and attempting reconnect (org.apache.zookeeper.ClientCnxn$SendThread:run-ClientCnxn.java:1161) 
+java.net.ConnectException: Connection refused: no further information
+at sun.nio.ch.SocketChannelImpl.checkConnect(Native Method)
+at sun.nio.ch.SocketChannelImpl.finishConnect(SocketChannelImpl.java:574)
+at org.apache.zookeeper.ClientCnxn$SendThread.run(ClientCnxn.java:1119)
+
+Java Code
+public static void main(String[] args) throws IOException
+{
+ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext(new String[]
+
+Unknown macro: { "dubbo-service.xml" }
+);
+context.start();
+System.in.read(); // 按任意键退出
+}
+XML:
+
+<!-- 提供方应用信息，用于计算依赖关系 -->
+    <dubbo:application name="service1"  />
+  
+    <!-- 使用 zookeeper -->
+    <dubbo:registry protocol="zookeeper" address="192.168.10.13:2181" />
+  
+    <!-- 用dubbo协议在10001端口暴露服务 -->
+    <dubbo:protocol name="dubbo" port="10001" />
+  
+    <!-- 声明需要暴露的服务接口 -->
+    <dubbo:service interface="org.e.test.dubbo.service.TestService" ref="testService" />
+  
+    <!-- 和本地bean一样实现服务 -->
+    <bean id="testService" class="org.e.test.dubbo.service.impl.TestServiceImpl" />
+Permalink
+Reply
+User icon: Anonymous 二月 28, 2013
+Anonymous
+请问,dubbo所依赖的spring能升级成3.x吗？
+
+Permalink
+Reply
+User icon: Anonymous 五月 03, 2013
+Anonymous
+请问如何在服务提供者中获取服务消费者的消息，就是我想知道是那个消费者调用了我
+
+Permalink
+Reply
+User icon: Anonymous 五月 14, 2013
+Anonymous
+请问我可以自己命名服务名吗？默认的是包名+类名，能改吗？
+
+Permalink
+Reply
+User icon: Anonymous 六月 21, 2013
+Anonymous
+关闭服务提供者怎么抛出下列异常，请帮忙看一下:
+Caused by: com.alibaba.dubbo.remoting.RemotingException: com.alibaba.dubbo.remoting.RemotingException: Not found exported service: com.alibaba.dubbo.registry.NotifyListener.25001087:2323 in [com.alibaba.dubbo.registry.NotifyListener.5329507:2323, com.alibaba.dubbo.registry.RegistryService:9090], may be version or group mismatch , channel: consumer: /192.168.62.99:9090 --> provider: /192.168.62.99:2323, message:RpcInvocation [methodName=notify, parameterTypes=[interface java.util.List], arguments=[[]], attachments=
+
+Unknown macro:
+
+Unknown macro: {dubbo=2.4.9, input=266, _isCallBackServiceInvoke=true, sys_callback_arg-1=25001087, path=com.alibaba.dubbo.registry.NotifyListener, callback.service.instid=25001087, interface=com.alibaba.dubbo.registry.RegistryService, version=null}
+]
+com.alibaba.dubbo.remoting.RemotingException: Not found exported service: com.alibaba.dubbo.registry.NotifyListener.25001087:2323 in [com.alibaba.dubbo.registry.NotifyListener.5329507:2323, com.alibaba.dubbo.registry.RegistryService:9090], may be version or group mismatch , channel: consumer: /192.168.62.99:9090 --> provider: /192.168.62.99:2323, message:RpcInvocation [methodName=notify, parameterTypes=[interface java.util.List], arguments=[[]], attachments=
+
+]
+
+Permalink
+Reply
+User icon: Anonymous 七月 05, 2013
+Anonymous
+运行性能测试时
+
+public class Test extends AbstractClientRunnable {
+    public Test(String arg0, int arg1, int arg2, int arg3, CyclicBarrier arg4,
+            CountDownLatch arg5, long arg6, long arg7)
+
+Unknown macro: {        super(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);    }
+    @Override
+    public Object invoke(ServiceFactory serviceFactory)
+
+Unknown macro: {        DemoService demoService = (DemoService) serviceFactory                .get(DemoService.class);        return demoService.sendRequest("hello");    }
+}
+
+run.bat
+
+Exception in thread "main" java.lang.reflect.InvocationTargetException
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance0(Native Method)
+        at sun.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:57)
+        at sun.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:45)
+        at java.lang.reflect.Constructor.newInstance(Constructor.java:526)
+        at com.alibaba.dubbo.rpc.benchmark.RpcBenchmarkClient.getClientRunnable(RpcBenchmarkClient.java:18)
+        at com.alibaba.dubbo.rpc.benchmark.AbstractBenchmarkClient.run(AbstractBenchmarkClient.java:109)
+        at com.alibaba.dubbo.rpc.benchmark.RpcBenchmarkClient.main(RpcBenchmarkClient.java:22)
+Caused by: java.lang.NegativeArraySizeException
+        at com.alibaba.dubbo.rpc.benchmark.AbstractClientRunnable.<init>(AbstractClientRunnable.java:66)
+        at com.alibaba.dubbo.rpc.benchmark.Test.<init>(Test.java:12)
+        ... 7 more
+
+Permalink
+Reply
+User icon: Anonymous 八月 30, 2013
+Anonymous
+服务提供方设置
+<dubbo:provider timeout="10000"/>
+将导至服务启动变慢,启动时间与 timeout 的大小相关，
+如果设置
+<dubbo:provider timeout="1000"/> 后服务启动明显加快。不知道是什么原因？
+
+Permalink
+Reply
+User icon: Anonymous 九月 23, 2013
+Anonymous
+梁飞，您好！
+我想咨询下，我想提供一个服务给php调用，所以打算采用http的协议+json的序列化，但是我配置了<dubbo:protocol name="http" port="20880" serialization="fastjson" />后，协议是采用http协议了，但是没有按照json序列话，我看http post的Content-Type: application/x-java-serialized-object，怎么会这样呢？
+
+Permalink
+Reply
+User icon: Anonymous 九月 24, 2013
+Anonymous
+使用的dubbo版本是2.5.4，注册中心用zookeeper。
+使用6000并发ramp20s请求consumer端，协议使用hessian，使用5台tomcat做service容器，每台1200maxthread，consumer端也部署在tomcat上maxthread6000。
+测试的时候，有时会出现
+com.alibaba.dubbo.rpc.RpcException: Forbid consumer 192.168.50.214 access service xx.xxx.xxxx from registry 192.168.52.144:2181 use dubbo version 2.5.4-SNAPSHOT, Please check registry access list (whitelist/blacklist).
+跟了代码到com.alibaba.dubbo.registry.integration.RegistryDirectory : RegistryDirectory.java :211 : refreshInvoker 里返回的invokeUrl列表是empty://192.168.52.143/.......
+进入if块：
+this.forbidden = true; // 禁止访问
+this.methodInvokerMap = null; // 置空列表
+destroyAllInvokers(); // 关闭所有Invoker
+使得不能访问service，这个情况只出现几秒后，又正常了，但是这几秒内的service请求就没掉了。这是因为什么?是tomcat太忙导致？是session过期，还是其他什么。
+
+Permalink
+Reply
+User icon: Anonymous 十月 18, 2013
+Anonymous
+dubbo团队你们好，初次使用dubbo，有几个问题
+如果外部想通过http url的形式访问dubbo服务，对应的dubbo服务要使用http协议么。
+如果使用url的形式调用dubbo服务，服务有多个提供着并且分布在多个主机上，如何调用。
+用dubbo搭建的服务群如何给外部提供统一的http调用api。
+望解答，谢谢
+
+Permalink
+Reply
+User icon: Anonymous 十一月 12, 2013
+Anonymous
+webservice 里面
+协议的上下文路径<dubbo:protocol contextpath="foo" />必须与servlet应用的上下文路径相同。
+
+这里好像不对啊 cxf里面 用request.getPathInfo() 只取web.xml里面配置的url-pattern后面的值
+
+Permalink
+Reply
+User icon: Anonymous 十二月 04, 2013
+Anonymous
+为什么不加一个 集群配置手册？ 纯新手看这东西还是 很费劲的。看了2天了。只能在myeclipse完成一个本地测试，怎么搭建集群。部署到服务器，完全没有头绪
+
+Permalink
+Reply
+User icon: Anonymous 十二月 05, 2013
+Anonymous
+静态服务为啥不起作用呢，配置了dynamic=false，结果状态不是禁用状态
+
+Permalink
+Reply
+User icon: Anonymous 十二月 13, 2013
+Anonymous
+能不能写本书比如 dubbo in action之类的，学习起来也比较方便
+
+Permalink
+Reply
+User icon: Anonymous 十二月 27, 2013
+Anonymous
+局域网内多台机器搭建dubbo，不能使用 multicast 么？
+为什么我的provider 
+Start NettyServer bind /0.0.0.0:20880, export /61.0.0.22:20880, dubbo version: 2.4.9, current host: 127.0.0.1
+为什么会变成这样呢？
+
+Permalink
+Reply
+Add Comment
+
+Powered by a free Atlassian Confluence Open Source Project License granted to Alibaba Tech. Evaluate Confluence today.
+Powered by Atlassian Confluence 3.5.9, the Enterprise Wiki   |  Report a bug  |  Atlassian News
+友情链接:Taocode
