@@ -1,6 +1,5 @@
 package com.nio.lockfile;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -26,8 +25,8 @@ public class LockingMappedFiles {
             out.put((byte)'x');
         }
 
-        new LockAndModify(out, 0, LENGTH/3);
-        new LockAndModify(out, LENGTH/2, LENGTH/4 + LENGTH/2);
+        new LockAndModify(out, 0, LENGTH/2);
+        new LockAndModify(out, LENGTH/3, LENGTH/4 + LENGTH/2);
     }
 
     private static class LockAndModify extends Thread {
@@ -38,7 +37,7 @@ public class LockingMappedFiles {
             this.end = end;
             bb.limit(end);
             bb.position(start);
-            buff = buff.slice();
+            buff = bb.slice();
             start();
         }
 
