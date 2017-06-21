@@ -46,7 +46,7 @@ public class BufferToText {
 
         fc = new RandomAccessFile("BufferToText.txt", "rw").getChannel();
         fc.position(fc.size());
-        fc.write(ByteBuffer.wrap("some text encode as utf16e".getBytes("UTF-16BE")));
+        fc.write(ByteBuffer.wrap("some text encode as东西婚族 utf16e".getBytes("UTF-16BE")));
         fc.close();
 
         //这里再读出来。就不乱码了
