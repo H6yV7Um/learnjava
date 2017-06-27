@@ -8,6 +8,8 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 
 /**
+ * 当多个线程加锁的区域有交集时，后者会抛出OverlappingFileLockException异常
+ *
  * Created by dongchunxu on 2017/6/21.
  */
 public class LockingMappedFiles {
@@ -43,7 +45,7 @@ public class LockingMappedFiles {
 
         public void run() {
             try {
-                FileLock lock = fc.lock(start, end, false);
+                FileLock lock = fc.tryLock(start, end, false);
                 System.out.println("Locked: " + start + " to " + end);
                 while (buff.position() < buff.limit() - 1) {
                     buff.put((byte) (buff.get() + 1));
