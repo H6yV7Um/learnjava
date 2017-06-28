@@ -22,14 +22,16 @@ public class CachedThreadPool {
             service.execute(new LiftOff());
             if (i >= 10 && i % 10 == 0) {
                 try {
-                    Thread.sleep(4000);
+                    Thread.sleep(300);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
         }
-        service.shutdown();
 
+        service.shutdown();
         System.out.println("观察main线程做了那些事");
+
+
     }
 }

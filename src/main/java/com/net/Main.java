@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -33,27 +34,26 @@ import java.util.concurrent.atomic.AtomicLong;
 public class Main {
 
     private static RequestConfig requestConfig = RequestConfig.custom()
-            .setSocketTimeout(15000)
-            .setConnectTimeout(15000)
+            .setSocketTimeout(13000)
+            .setConnectTimeout(13000)
             .setConnectionRequestTimeout(15000)
             .build();
 
-    private static AtomicLong successCounter = new AtomicLong(1);
-    private static AtomicLong failedCounter = new AtomicLong(1);
+    private static AtomicLong successCounter = new AtomicLong(0);
+    private static AtomicLong failedCounter = new AtomicLong(0);
 
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 //        String result = new Main().sendHttpGet("http://47.90.63.0:81");
 //        System.out.println(result);
 
-        ExecutorService es = Executors.newFixedThreadPool(10);
-        for (int i = 0; i < 100; i++) {
+        ExecutorService es = Executors.newCachedThreadPool();
+        for (int i = 0; i < 30; i++) {
             es.execute(new Main.MyRunnable());
         }
 
-
         try {
-            Thread.sleep(6000);
+            TimeUnit.SECONDS.sleep(8);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -65,27 +65,28 @@ public class Main {
     static class MyRunnable implements Runnable {
 
         public void run() {
+            Map<String, String> maps = new HashMap<String, String>();
+            maps.put("type", "all");
+            maps.put("currentPage", "2");
+            maps.put("totalCount", "28916");
+            maps.put("placeId", "175649");
+            maps.put("placeIdType", "PLACE");
+            maps.put("isPOI", "Y");
+            maps.put("isELong", "N");
+            maps.put("isPicture", "");
+            maps.put("isBest", "");
+            String result =
+//                    //sendHttpPost("http://www.lvmama.com", maps);
+                    sendHttpPost("http://ticket.lvmama.com/vst_front/comment/newPaginationOfComments", maps);
+                   // sendHttpPost("http://ticket.lvmama.com/scenic_front/scenic/asynLoadingComment.do", maps);
 
-//            Map<String, String> maps = new HashMap<String, String>();
-//            maps.put("type", "all");
-//            maps.put("currentPage", "2");
-//            maps.put("totalCount", "35031");
-//            maps.put("placeId", "102843");
-//            maps.put("placeIdType", "PLACE");
-//            maps.put("isPOI", "Y");
-//            maps.put("isELong", "N");
-//            maps.put("isPicture", "");
-//            maps.put("isBest", "");
-//            String result =
-//                    sendHttpPost("http://ticket.lvmama.com/vst_front/comment/newPaginationOfComments", maps);
 
-
-            String result = sendHttpGet("http://47.90.63.0:81");
+//           result = sendHttpGet("http://47.90.63.0:81/");
+//            String result = sendHttpGet("http://www.lvmama.com");
             System.out.println(result + "--------------------------------");
-
-
         }
     }
+
 
     /**
      * 发送 post请求
@@ -127,9 +128,9 @@ public class Main {
             response = httpClient.execute(httpGet);
 
             if (response.getStatusLine().getStatusCode() == 200) {
-                successCounter.addAndGet(1);
+                successCounter.getAndAdd(1);
             } else {
-                failedCounter.addAndGet(1);
+                failedCounter.getAndAdd(1);
             }
             entity = response.getEntity();
             responseContent = EntityUtils.toString(entity, "UTF-8");
@@ -167,10 +168,16 @@ public class Main {
             httpPost.setConfig(requestConfig);
             // 执行请求
             response = httpClient.execute(httpPost);
+            if (response.getStatusLine().getStatusCode() == 200) {
+                successCounter.getAndAdd(1);
+            } else {
+                failedCounter.getAndAdd(1);
+            }
             entity = response.getEntity();
             responseContent = EntityUtils.toString(entity, "UTF-8");
         } catch (Exception e) {
             e.printStackTrace();
+            failedCounter.getAndAdd(1);
         } finally {
             try {
                 // 关闭连接,释放资源

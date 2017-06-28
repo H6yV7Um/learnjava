@@ -1,4 +1,4 @@
-package com.concurrent;
+package com.concurrent.daemon;
 
 import java.util.concurrent.TimeUnit;
 
@@ -23,7 +23,7 @@ public class SimpleDaemons implements Runnable {
     public static void main(String[] args) throws InterruptedException {
         for (int i = 0; i < 10; i++) {
             Thread daemon = new Thread(new SimpleDaemons());
-            //daemon.setDaemon(true);
+            daemon.setDaemon(true);
             daemon.start();
         }
         System.out.println("all daemons thread started");
