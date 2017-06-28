@@ -1,4 +1,4 @@
-package com.thread;
+package com.concurrent;
 
 /**
  * Created by dongchunxu on 2017/6/28.

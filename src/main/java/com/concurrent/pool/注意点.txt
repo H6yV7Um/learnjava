@@ -1,0 +1,7 @@
+1.submit 和execute 有什么区别
+
+2.callable, runnable
+为什么提交的callable，main程序的输出日志才会打印，而runnable的不会打印
+
+2.yield 让步，是建议具有相同优先级的其他线程可以运行
+不保证会被采纳，所以最好不要依赖他

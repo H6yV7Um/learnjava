@@ -1,4 +1,4 @@
-package com.thread;
+package com.concurrent;
 
 /**
  * Created by dongchunxu on 2017/6/28.
@@ -17,7 +17,7 @@ public class LiftOff implements Runnable {
         }
     }
 
-    private String status() {
+    public String status() {
         return "#" + id + "("
                 + (countDown > 0 ? countDown + "_threadname:" + Thread.currentThread().getName() : "Liffoff!") + "), ";
     }
