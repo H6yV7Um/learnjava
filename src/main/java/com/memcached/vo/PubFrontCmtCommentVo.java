@@ -214,7 +214,7 @@ public class PubFrontCmtCommentVo extends CmtComment {
     public String toString() {
         return "CmtComment [commentId=" + super.getCommentId() + ", placeId=" + super.getPlaceId() + ", productId=" + super.getProductId()
                 + ", orderId=" + super.getOrderId() + ", userId=" + super.getUserId() + ", userName="
-                + super.getUserName() + ", channel=" + super.getChannel() + ", cmtEffectType="
+                + super.getUserName() + ", cancel=" + super.getChannel() + ", cmtEffectType="
                 + super.getCmtEffectType() + ", reqIp=" + super.getReqIp() + ", appVersion=" + this.getAppVersion() 
                 + ", phoneModel=" + this.getPhoneModel() + "]";
 	}

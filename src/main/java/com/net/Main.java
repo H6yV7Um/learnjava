@@ -48,12 +48,12 @@ public class Main {
 //        System.out.println(result);
 
         ExecutorService es = Executors.newCachedThreadPool();
-        for (int i = 0; i < 30; i++) {
+        for (int i = 0; i < 70; i++) {
             es.execute(new Main.MyRunnable());
         }
 
         try {
-            TimeUnit.SECONDS.sleep(8);
+            TimeUnit.SECONDS.sleep(30);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -68,22 +68,22 @@ public class Main {
             Map<String, String> maps = new HashMap<String, String>();
             maps.put("type", "all");
             maps.put("currentPage", "2");
-            maps.put("totalCount", "28916");
-            maps.put("placeId", "175649");
+            maps.put("totalCount", "36556");
+            maps.put("placeId", "120044");
             maps.put("placeIdType", "PLACE");
             maps.put("isPOI", "Y");
             maps.put("isELong", "N");
             maps.put("isPicture", "");
             maps.put("isBest", "");
-            String result =
+            String result = result = sendHttpGet("http://www.tongchengyin.com");
 //                    //sendHttpPost("http://www.lvmama.com", maps);
-                    sendHttpPost("http://ticket.lvmama.com/vst_front/comment/newPaginationOfComments", maps);
+//                    sendHttpPost("http://ticket.lvmama.com/vst_front/comment/newPaginationOfComments.do", maps);
                    // sendHttpPost("http://ticket.lvmama.com/scenic_front/scenic/asynLoadingComment.do", maps);
 
 
-//           result = sendHttpGet("http://47.90.63.0:81/");
+
 //            String result = sendHttpGet("http://www.lvmama.com");
-            System.out.println(result + "--------------------------------");
+            //System.out.println(result + "--------------------------------");
         }
     }
 
