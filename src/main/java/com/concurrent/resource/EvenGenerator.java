@@ -20,8 +20,8 @@ public class EvenGenerator extends IntGenerator {
 //            atomicInteger.addAndGet(1);
             ++currentEventVal;
             ++currentEventVal;
+            return currentEventVal;
         }
-        return currentEventVal;
     }
 
     public static void main(String[] args) {
