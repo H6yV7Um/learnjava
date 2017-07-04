@@ -48,7 +48,7 @@ public class Main {
 //        System.out.println(result);
 
         ExecutorService es = Executors.newCachedThreadPool();
-        for (int i = 0; i < 70; i++) {
+        for (int i = 0; i < 1; i++) {
             es.execute(new Main.MyRunnable());
         }
 
@@ -75,15 +75,14 @@ public class Main {
             maps.put("isELong", "N");
             maps.put("isPicture", "");
             maps.put("isBest", "");
-            String result = result = sendHttpGet("http://www.tongchengyin.com");
+            String result = sendHttpGet("http://ticket.lvmama.com/vst_front/comment/newPaginationOfComments?type=all&currentPage=2&totalCount=46335&placeId=1&placeIdType=PLACE");
 //                    //sendHttpPost("http://www.lvmama.com", maps);
 //                    sendHttpPost("http://ticket.lvmama.com/vst_front/comment/newPaginationOfComments.do", maps);
                    // sendHttpPost("http://ticket.lvmama.com/scenic_front/scenic/asynLoadingComment.do", maps);
 
 
-
 //            String result = sendHttpGet("http://www.lvmama.com");
-            //System.out.println(result + "--------------------------------");
+            System.out.println(result + "--------------------------------");
         }
     }
 
