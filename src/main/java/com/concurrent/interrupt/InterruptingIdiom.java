@@ -16,6 +16,10 @@ import java.util.concurrent.TimeUnit;
  *
  *  这个例子可以设置不同的时间参数，来观察结果
  *  800, 1200，1010 分别观察结果
+ *
+ *
+ *  1010 时， 程序已经进入到for循环计算中，似乎这里interrupt不能打断？
+ *
  * Created by dongchunxu on 2017/7/2.
  */
 class NeedsCleanup {
@@ -44,7 +48,7 @@ class Blocked3 implements Runnable {
                     NeedsCleanup n2 = new NeedsCleanup(2);
                     try {
                         System.out.println("calculating");
-                        for (int i = 0; i < 2500000; i++) {
+                        for (int i = 0; i < 25000000; i++) {
                             d = d + (Math.PI + Math.E) / d;
                         }
                         System.out.println("finished time - consuming operation");

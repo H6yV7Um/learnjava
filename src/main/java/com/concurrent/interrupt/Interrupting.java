@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
  *
  * 1. 调用interrupt，必须持有Thread对象，而新的类库却推荐使用Executor来执行所有操作。
  * 关闭所有任务：如果在Executor上调用shutdownNow，它将会发送一个interrupt调用给它启动的所有线程。
- * 关闭单个任务： 通过submit提交任务就可以获得任务的上下文Future。来调用cacel方法，调用cancel(true)和执行，那么它就拥有在
+ * 关闭单个任务： 通过submit提交任务就可以获得任务的上下文Future。来调用cancel方法，调用cancel(true)和执行，那么它就拥有在
  *  该线程上调用interrupt的权限。
  *
  *  在io和synchronized块上的阻塞不可中断

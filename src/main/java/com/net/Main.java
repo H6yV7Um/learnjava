@@ -53,7 +53,7 @@ public class Main {
         }
 
         try {
-            TimeUnit.SECONDS.sleep(30);
+            TimeUnit.SECONDS.sleep(5);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -68,21 +68,25 @@ public class Main {
             Map<String, String> maps = new HashMap<String, String>();
             maps.put("type", "all");
             maps.put("currentPage", "2");
-            maps.put("totalCount", "36556");
+            maps.put("totalCount", "36554");
             maps.put("placeId", "120044");
             maps.put("placeIdType", "PLACE");
             maps.put("isPOI", "Y");
             maps.put("isELong", "N");
             maps.put("isPicture", "");
             maps.put("isBest", "");
-            String result = sendHttpGet("http://ticket.lvmama.com/vst_front/comment/newPaginationOfComments?type=all&currentPage=2&totalCount=46335&placeId=1&placeIdType=PLACE");
+
+            for (int i = 3; i < 1000; ++i) {
+                String result = sendHttpGet("http://ticket.lvmama.com/vst_front/comment/newPaginationOfComments?type=all&currentPage=" + i +"&totalCount=46335&placeId=79&placeIdType=PLACE");
+                System.out.println(result + "--------------------------------");
+
+            }
 //                    //sendHttpPost("http://www.lvmama.com", maps);
 //                    sendHttpPost("http://ticket.lvmama.com/vst_front/comment/newPaginationOfComments.do", maps);
                    // sendHttpPost("http://ticket.lvmama.com/scenic_front/scenic/asynLoadingComment.do", maps);
 
 
 //            String result = sendHttpGet("http://www.lvmama.com");
-            System.out.println(result + "--------------------------------");
         }
     }
 
