@@ -44,22 +44,22 @@ public class Main {
 
 
     public static void main(String[] args) throws InterruptedException {
-//        String result = new Main().sendHttpGet("http://47.90.63.0:81");
+//        String result = new HBaseClientApiDemo().sendHttpGet("http://47.90.63.0:81");
 //        System.out.println(result);
 
         ExecutorService es = Executors.newCachedThreadPool();
-        for (int i = 0; i < 1; i++) {
+        for (int i = 0; i < 2; i++) {
             es.execute(new Main.MyRunnable());
         }
 
-        try {
-            TimeUnit.SECONDS.sleep(5);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        System.out.println("success:" + successCounter.get());
-        System.out.println("failed:" + failedCounter.get());
+//        try {
+//            TimeUnit.SECONDS.sleep(5);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+//
+//        System.out.println("success:" + successCounter.get());
+//        System.out.println("failed:" + failedCounter.get());
     }
 
     static class MyRunnable implements Runnable {
@@ -76,7 +76,7 @@ public class Main {
             maps.put("isPicture", "");
             maps.put("isBest", "");
 
-            for (int i = 3; i < 1000; ++i) {
+            for (int i = 3; i < 200; ++i) {
                 String result = sendHttpGet("http://ticket.lvmama.com/vst_front/comment/newPaginationOfComments?type=all&currentPage=" + i +"&totalCount=46335&placeId=79&placeIdType=PLACE");
                 System.out.println(result + "--------------------------------");
 
