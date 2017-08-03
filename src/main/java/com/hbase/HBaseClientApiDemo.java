@@ -1,7 +1,5 @@
 package com.hbase;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -18,23 +16,18 @@ import java.io.IOException;
  * Created by dongchunxu on 2017/7/25.
  *
  */
-public class HBaseClientApiDemo {
+public class HBaseClientApiDemo extends HBaseBase{
     private static final String TABLE_NAME = "myLittleHBaseTable";
 
     public static void main(String[] args) throws IOException {
-        //读取classpath下的hbase-site.xml和hbase-default.xml
-        Configuration config = HBaseConfiguration.create();
-        config.set("hbase.zookeeper.property.clientPort", "2181");
-        config.set("hbase.zookeeper.quorum", "47.52.66.199");
-        //config.set("hbase.master", "47.52.66.199:37599");
-
-        Connection connection = ConnectionFactory.createConnection(config);
+        Connection connection = client.connect();
         try {
             Table table = connection.getTable(TableName.valueOf(TABLE_NAME));
+
             try {
                 Put p = new Put(Bytes.toBytes("myLittleRow"));
                 p.addColumn(Bytes.toBytes("myLittleFamily"), Bytes.toBytes("someQualifier"),
-                        Bytes.toBytes("Some value"));
+                        System.currentTimeMillis(), Bytes.toBytes("Some val3e32"));
 
                 table.put(p);
 
@@ -68,8 +61,24 @@ public class HBaseClientApiDemo {
                 if (table != null) table.close();
             }
         } finally {
-            connection.close();
+            client.close(connection);
         }
 
     }
+
+
+    public static void delete(Table table, String row) {
+        // 删除并没有真正的删除，只是创建了称作墓碑的标记
+        // 在Major Compaction操作中被清理
+        Delete delete = new Delete(Bytes.toBytes(row));
+        try {
+            table.delete(delete);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        //2.1
+
+    }
+
 }
