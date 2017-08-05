@@ -1,0 +1,31 @@
+java系统系统演进历史
+
+log4j ----成为事实上的标准
+|
+|
+java.util.logging -----java不服，认为自己才是正统
+|
+|
+commons-logging -----解决多种日志系统混乱的情况，抽象出一个接口层,默认实现是log4j
+|
+|
+slf4j ------更牛逼，自带实现logback。同时兼容
+            实现
+
+
+            桥接器
+                jul-to-slf4j把对jul的调用桥接到slf4j上
+                jcl-over-slf4j把对jcl的调用桥接到slf4j上
+                log4j-over-slf4j把对log4j的调用桥接到slf4j上
+
+                slf4j-api的实现目前比较出名的是接口开发者实现的logback，性能相较log4j来讲更加优秀，也支持占位符等新特性。
+                同时为了兼容log4j，slf4j-log4j12实现了slf4j-api，作为log4j兼容的适配器，使得用户用起来像在用log4j
+                为了兼容jul，slf4j-jdk14也实现了slf4j-api，作为jul兼容的适配器，使得用户用起来像在用jul
+
+            需要添加代码:
+            // Optionally remove existing handlers attached to j.u.l root logger
+            SLF4JBridgeHandler.removeHandlersForRootLogger();  // (since SLF4J 1.6.5)
+
+            // add SLF4JBridgeHandler to j.u.l's root logger, should be done once during
+            // the initialization phase of your application
+            SLF4JBridgeHandler.install();
